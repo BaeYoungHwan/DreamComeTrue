@@ -9,6 +9,8 @@ Voice input daemon for Claude Code.
 """
 
 import argparse
+import ctypes
+import ctypes.wintypes
 import logging
 import os
 import platform
@@ -18,6 +20,27 @@ import threading
 import time
 import wave
 from typing import Optional
+
+# ── Windows RegisterHotKey 상수 ────────────────────────────────────────────────
+_WM_HOTKEY   = 0x0312
+_MOD_ALT     = 0x0001
+_MOD_CTRL    = 0x0002
+_MOD_SHIFT   = 0x0004
+_MOD_NOREPEAT = 0x4000
+_VK_MAP: dict[str, int] = {
+    'space': 0x20,
+    **{f'f{i}': 0x6F + i for i in range(1, 13)},
+    **{chr(c): 0x41 + (c - ord('a')) for c in range(ord('a'), ord('z') + 1)},
+}
+
+def _parse_hotkey_win(hotkey: str) -> tuple[int, int]:
+    mods, vk = _MOD_NOREPEAT, 0
+    for p in (p.strip().lower() for p in hotkey.split('+')):
+        if p == 'ctrl':  mods |= _MOD_CTRL
+        elif p == 'alt': mods |= _MOD_ALT
+        elif p == 'shift': mods |= _MOD_SHIFT
+        else: vk = _VK_MAP.get(p, 0)
+    return mods, vk
 
 import keyboard
 import numpy as np
@@ -97,6 +120,7 @@ class VoiceRecorder:
         self._frames: list[np.ndarray] = []
         self._sample_count = 0
         self._lock = threading.Lock()
+        self._toggle_lock = threading.Lock()
         self._stream: Optional[sd.InputStream] = None
         self._recognizer = sr.Recognizer()
 
@@ -118,7 +142,8 @@ class VoiceRecorder:
             self._sample_count += indata.shape[0]
             if self._sample_count > _MAX_SAMPLES:
                 if self._sample_count - indata.shape[0] <= _MAX_SAMPLES:
-                    log.warning("최대 녹음 시간(%d초)에 도달했습니다. 단축키를 눌러 전사하세요.", MAX_RECORD_SECONDS)
+                    log.warning("최대 녹음 시간(%d초)을 초과했습니다. 자동 전사 중...", MAX_RECORD_SECONDS)
+                    threading.Thread(target=self.toggle, daemon=True).start()
                 return
             self._frames.append(indata.copy())
 
@@ -153,7 +178,12 @@ class VoiceRecorder:
         if not frames_snapshot:
             log.warning("[WARN] 녹음된 오디오가 없습니다.")
             return None
-        return np.concatenate(frames_snapshot, axis=0)
+        audio = np.concatenate(frames_snapshot, axis=0)
+        rms = float(np.sqrt(np.mean(audio.astype(np.float32) ** 2)))
+        log.info("[마이크 레벨] RMS=%.1f (기준: 200 이상이면 정상)", rms)
+        if rms < 200:
+            log.warning("[WARN] 마이크 입력이 너무 작습니다 (RMS=%.1f). Windows 마이크 볼륨을 확인하세요.", rms)
+        return audio
 
     def _transcribe(self, audio_data: np.ndarray) -> Optional[str]:
         tmp_path = ""
@@ -183,26 +213,39 @@ class VoiceRecorder:
     def _inject(self, text: str) -> None:
         # keyboard.write()는 CJK 문자를 일부 플랫폼에서 제대로 입력하지 못해
         # 클립보드 경유 붙여넣기를 사용한다.
+        # RegisterHotKey 모드에서는 keyboard hook 스레드가 없으므로 ctypes로 직접 전송.
         previous = pyperclip.paste()
         try:
             pyperclip.copy(text)
             time.sleep(_PASTE_SETUP_DELAY)
-            keyboard.send("ctrl+v")
+            if _IS_WINDOWS:
+                u32 = ctypes.windll.user32
+                VK_CONTROL, VK_V = 0x11, 0x56
+                KEYEVENTF_KEYUP = 0x0002
+                u32.keybd_event(VK_CONTROL, 0, 0, 0)
+                u32.keybd_event(VK_V, 0, 0, 0)
+                u32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+                u32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+            else:
+                keyboard.send("ctrl+v")
             time.sleep(_PASTE_RESTORE_DELAY)
+            log.info("[입력 완료] %s", text[:40])
         except Exception as e:
             log.error("[ERROR] 텍스트 입력 실패: %s", e)
         finally:
             pyperclip.copy(previous)
 
     def toggle(self) -> None:
-        if not self.recording:
-            self._start()
-        else:
+        with self._toggle_lock:
+            if not self.recording:
+                self._start()
+                return
             audio_data = self._stop()
-            if audio_data is not None:
-                text = self._transcribe(audio_data)
-                if text:
-                    self._inject(text)
+        # 락 해제 후 전사 — 전사 중에도 핫키 즉시 반응
+        if audio_data is not None:
+            text = self._transcribe(audio_data)
+            if text:
+                self._inject(text)
 
 
 def main() -> None:
@@ -229,11 +272,38 @@ def main() -> None:
                 _f.write("idle")
         except OSError:
             pass
-        hotkey_handle = keyboard.add_hotkey(args.hotkey, recorder.toggle, suppress=False)
+        def _on_hotkey():
+            log.info("[HOTKEY] %s 감지", args.hotkey)
+            threading.Thread(target=recorder.toggle, daemon=True).start()
+
+        if _IS_WINDOWS:
+            # RegisterHotKey + PeekMessage 는 반드시 같은 스레드에서 실행해야 함
+            def _win_hotkey_loop():
+                u32 = ctypes.windll.user32
+                mods, vk = _parse_hotkey_win(args.hotkey)
+                if not (vk and u32.RegisterHotKey(None, 1, mods, vk)):
+                    log.warning("[HOTKEY] RegisterHotKey 실패, keyboard 라이브러리로 fallback")
+                    kb_handle = keyboard.add_hotkey(args.hotkey, _on_hotkey, suppress=False)
+                    stop_event.wait()
+                    keyboard.remove_hotkey(kb_handle)
+                    return
+                log.info("[HOTKEY] RegisterHotKey 등록 완료 (mods=0x%X vk=0x%X)", mods, vk)
+                msg = ctypes.wintypes.MSG()
+                while not stop_event.is_set():
+                    if u32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1) and msg.message == _WM_HOTKEY:
+                        _on_hotkey()
+                    else:
+                        time.sleep(0.01)
+                u32.UnregisterHotKey(None, 1)
+            threading.Thread(target=_win_hotkey_loop, daemon=True).start()
+            hotkey_handle = None
+        else:
+            hotkey_handle = keyboard.add_hotkey(args.hotkey, _on_hotkey, suppress=False)
         log.info("준비 완료. 단축키: %s  언어: %s", args.hotkey, args.lang)
         log.info("종료: 트레이 아이콘 우클릭 → 종료  또는  Ctrl+C")
         stop_event.wait()
-        keyboard.remove_hotkey(hotkey_handle)
+        if hotkey_handle is not None:
+            keyboard.remove_hotkey(hotkey_handle)
         try:
             import os as _os
             _os.unlink(_STATE_PATH)

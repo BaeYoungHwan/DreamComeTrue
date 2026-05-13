@@ -22,7 +22,7 @@ foreach ($cmd in @("python", "python3")) {
 if (-not $python) { exit 1 }
 if (-not (Test-Path $VoiceScript)) { exit 1 }
 
-Start-Process $python -ArgumentList "`"$VoiceScript`"" -WindowStyle Hidden -WorkingDirectory (Split-Path $VoiceScript)
+Start-Process $python -ArgumentList "`"$VoiceScript`" --hotkey f9" -WindowStyle Hidden -WorkingDirectory (Split-Path $VoiceScript)
 
 # Toast 알림 — 보이스 데몬 시작 알림
 try {
