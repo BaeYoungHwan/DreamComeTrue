@@ -1,4 +1,4 @@
-﻿# TODO — claude-code-template 유지보수
+# TODO — claude-code-template 유지보수
 
 > 범례: [ ] 미착수  [🔄] 진행 중  [x] 완료
 > 재시작 시: docs/ref/session-state.md 확인 후 [🔄] 항목부터 재개
@@ -223,11 +223,26 @@
 
 ## P1 — 고도화 [나중]
 
-- [ ] AI-Readiness 점수 목표 설정 및 주기적 측정 체계 수립
-- [ ] improve-token-efficiency 결과 기반 비용 최적화 실행
-- [ ] 에이전트 추가 후 실제 프로젝트 적용 테스트
-- [ ] executor.py — 병렬 실행 가능 태스크 자동 감지 및 동시 실행
-- [ ] install-harness.sh — 기존 프로젝트에 하네스 레이어 자동 설치 스크립트
-      실행: ./install.sh /path/to/my-project
-      동작: .claude/ + agents/ + docs/ref/ + CLAUDE.md 복사, src/ tests/ 건드리지 않음
-      충돌 시 덮어쓰기/병합/건너뜀 선택 프롬프트
+### 1. AI-Readiness 주기적 측정 체계 수립
+
+- [ ] [P1-1-A] /init-project — AI-Readiness 추적 인터뷰 추가
+      인터뷰: "AI-Readiness 주기 측정을 활성화하시겠습니까? (Y/N)"
+      Y → 추가 인터뷰: 측정 주기 선택 (주 1회 / 월 1회)
+          /schedule로 주기적 ai-readiness-cartography 실행 등록
+          git 비활성 감지: 30일간 커밋 없으면 스케줄 자동 일시정지
+      N → 스킵
+
+- [ ] [P1-1-B] /close-project 스킬 신규 작성
+      파일: .claude/commands/close-project.md
+      작업 순서:
+        1. 미커밋 파일 확인 + 최종 커밋 제안
+        2. 최종 AI-Readiness 점수 측정
+        3. 토큰/비용 효율 최종 분석 (improve-token-efficiency)
+        4. TODO.md 미완료 항목 집계
+        5. exec-plans/active/ → exec-plans/completed/ 이동
+        6. README 정리 (프로젝트 상태 반영)
+        7. 최종 HTML 대시보드 생성 (AI-Readiness + 토큰 효율 통합)
+        8. 이메일 + 토스트 알림 발송 (SMTP 설정 시)
+        9. .project-closed 플래그 생성 (스케줄 재활성화 방지)
+        10. 회고 인터뷰 + 회고 문서 생성 (선택)
+        11. 주기적 AI-Readiness 스케줄 중단
