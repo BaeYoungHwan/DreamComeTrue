@@ -129,14 +129,16 @@ n 선택 시 종료. y 선택 시 계속 진행.
 
 **Python이 사용 가능한 경우**: f-string 템플릿을 이용해 `docs/project-close-report.html`을 생성한다.
 
-> **주의:** 아래 스크립트의 `[2단계 결과]`, `[4단계 결과]` 플레이스홀더는
-> 2단계·4단계에서 수집한 실제 값(AI-Readiness 점수, 미완료 TODO 개수)으로
-> Claude가 치환한 후 Python 스크립트를 실행합니다.
+> **주의:** 스크립트 상단 `ai_score`, `todo_count` 두 변수만 실제 값으로 치환한 후 실행합니다.
+> 기본값(`'측정 안 됨'`, `0`)이 그대로 남아 있으면 치환이 안 된 것입니다.
 
 ```python
 # 예시 생성 명령 (Python 3)
 python -c "
 import datetime, os, pathlib
+
+ai_score = '측정 안 됨'   # 2단계 AI-Readiness 결과로 Claude가 이 값을 치환
+todo_count = 0            # 4단계 미완료 TODO 개수로 Claude가 이 값을 치환
 
 try:
     import re as _re
@@ -149,7 +151,7 @@ close_date = datetime.date.today().isoformat()
 completed = list(pathlib.Path('docs/exec-plans/completed').glob('*')) if pathlib.Path('docs/exec-plans/completed').exists() else []
 phase_list = ''.join(f'<li>{p.name}</li>' for p in completed)
 
-html = f"""<!DOCTYPE html>
+html = f\"\"\"<!DOCTYPE html>
 <html lang='ko'>
 <head><meta charset='UTF-8'><title>종료 보고서 — {project_name}</title>
 <style>body{{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px}}
@@ -161,12 +163,12 @@ td,th{{border:1px solid #ddd;padding:8px}}th{{background:#f4f4f4}}</style>
 <table>
   <tr><th>프로젝트명</th><td>{project_name}</td></tr>
   <tr><th>종료일</th><td>{close_date}</td></tr>
-  <tr><th>AI-Readiness 점수</th><td>[2단계 결과]</td></tr>
-  <tr><th>미완료 TODO</th><td>[4단계 결과]개</td></tr>
+  <tr><th>AI-Readiness 점수</th><td>{ai_score}</td></tr>
+  <tr><th>미완료 TODO</th><td>{todo_count}개</td></tr>
 </table>
 <h2>완료된 Phase</h2>
 <ul>{phase_list}</ul>
-</body></html>"""
+</body></html>\"\"\"
 
 pathlib.Path('docs/project-close-report.html').write_text(html, encoding='utf-8')
 print('✅ docs/project-close-report.html 생성 완료')
