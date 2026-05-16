@@ -44,6 +44,11 @@
 - 독립 태스크 1~2개 → `/ralph`
 - 단순 작업 → 직접 실행
 
+**Plan 모드 실행 규칙** → [`docs/ref/plan-mode-workflow.md`](docs/ref/plan-mode-workflow.md):
+- ExitPlanMode 승인 = 플랜 전체 일괄 승인 → 실행 단계 파일별 재확인 없음
+- ExitPlanMode 직후 `docs/exec-plans/active/` Phase 문서 없으면 자동 생성
+- Phase 2 설계 출력: 섹션형 리포트 형식 (코드 블록 아님)
+
 ---
 
 ## 작업 흐름

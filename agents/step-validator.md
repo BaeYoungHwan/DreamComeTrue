@@ -33,7 +33,7 @@ git diff <BASE_COMMIT>..HEAD --name-only
 
 > `BASE_COMMIT`: ultrawork **6단계 시작 전** `git rev-parse HEAD`로 캡처한 커밋 해시.
 > ultrawork가 이 값을 명시적으로 전달한다.
-> 값이 없는 경우 폴백: `git log --oneline | wc -l`로 병렬 커밋 수(N)를 추론해 `HEAD~N` 사용.
+> 값이 없는 경우 폴백: `git log master..HEAD --oneline | wc -l` (main 브랜치 사용 시 master → main으로 교체)로 메인 브랜치 이후 커밋 수(N)를 계산해 `HEAD~N` 사용.
 
 - 변경된 파일 목록 수집
 - ultrawork 태스크 명세와 비교해 의도치 않은 파일 변경 감지

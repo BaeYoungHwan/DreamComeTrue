@@ -204,7 +204,7 @@ PR 생성 직전 AI가 diff를 자동으로 리뷰할까요?
 
 ---
 
-### [스킬1-A/C] git 브랜치 전략
+### [스킬1-A] git 브랜치 전략
 
 **SCALE = 1 (개인):** main 브랜치만 사용. 인터뷰 생략.
 - 에이전트: `code-reviewer`, `step-validator` 자동 생성 (모든 SCALE 공통 — `agents/LANES.md` 참조)

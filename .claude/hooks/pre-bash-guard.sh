@@ -43,6 +43,11 @@ if [ "$_rm_has_r" = yes ] && [ "$_rm_has_f" = yes ]; then
   block "재귀 강제 삭제(rm -rf / --recursive --force)는 차단됩니다."
 fi
 
+# 6-a. 풀 테이블 스캔 차단 (deny-patterns.json에서 마이그레이션)
+if echo "$COMMAND" | grep -iqE '\bSELECT\s+\*\s+FROM\b'; then
+  block "SELECT * FROM은 차단됩니다. 풀 테이블 스캔 금지 — 조회 컬럼과 WHERE 인덱스를 명시하세요."
+fi
+
 # 6. DB 파괴 명령 및 위험 권한 변경 차단
 if echo "$COMMAND" | grep -iqE 'DROP\s+(TABLE|DATABASE|SCHEMA|INDEX|VIEW|TRIGGER|FUNCTION|PROCEDURE)'; then
   block "DROP 명령은 차단됩니다. 되돌릴 수 없는 DB/스키마 파괴 명령입니다."
