@@ -18,7 +18,7 @@
 
 ### 2. 에이전트 시스템 재설계
 
-- [ ] [에이전트1] agents/security-reviewer.md 신규 작성
+- [x] [에이전트1] agents/security-reviewer.md 신규 작성
       레인: Review Lane | 모델: sonnet
       역할:
         - OWASP Top 10 체크리스트 (SQLi, XSS, IDOR, 인증 취약점 등)
@@ -27,7 +27,7 @@
       생성 조건: /init-project 인터뷰에서 "배포 예정" or "민감 데이터 처리" 선택 시
       출력 형식: 🔴 위험 (즉시 수정) / 🟡 경고 (권장) / 🟢 통과
 
-- [ ] [에이전트2] agents/_templates/ 폴더 + domain-agent.tpl.md 작성
+- [x] [에이전트2] agents/_templates/ 폴더 + domain-agent.tpl.md 작성
       위치: agents/_templates/domain-agent.tpl.md (신규 폴더 포함)
       역할: /init-project가 프로젝트 테마에 맞게 복사+치환하여 실제 도메인 에이전트 생성
       플레이스홀더:
@@ -37,11 +37,11 @@
         {{DOMAIN_FILES}}  — 담당 파일/모듈 경로
       예시 도메인 주석 포함 (웹앱/E-Commerce/AI-ML 매핑)
 
-- [ ] [에이전트3] agents/example-agent.md 삭제
+- [x] [에이전트3] agents/example-agent.md 삭제
       삭제 사유: _templates/ 방식으로 역할 이전됨
       선행 조건: [에이전트4] LANES.md 갱신 완료 후 진행
 
-- [ ] [에이전트4] agents/LANES.md 갱신
+- [x] [에이전트4] agents/LANES.md 갱신
       수정 내용:
         1. 에이전트 생성 기준 섹션 추가 (인터뷰 기반, SCALE 비종속)
            "code-reviewer: 항상 / security-reviewer: 배포·민감데이터 시 / 도메인: 테마 선택 시"
@@ -104,7 +104,7 @@
                step-validator 성공/최종 실패 시 NOTIFY_EMAIL로 발송
            N → 이메일 설정 생략
 
-- [ ] [에이전트6] agents/step-validator.md 신규 작성 + ultrawork 연동
+- [x] [에이전트6] agents/step-validator.md 신규 작성 + ultrawork 연동
       레인: Review Lane | 모델: sonnet
       트리거: ultrawork 모든 병렬 태스크 완료 후 자동 호출 (반자동)
       실행 순서:
@@ -154,7 +154,7 @@
       C. docs/ref/tdd-guide.md 작성
          내용: 활성화 방법, 테스트 파일 명명 규칙 (언어별), 비활성화 방법
 
-- [ ] [문제5] deny-patterns.json + deny-list-guard.sh 폐지 → pre-bash-guard.sh 통합
+- [x] [문제5] deny-patterns.json + deny-list-guard.sh 폐지 → pre-bash-guard.sh 통합
       폐지: .claude/deny-patterns.json, .claude/hooks/deny-list-guard.sh
       사유: pre-bash-guard.sh가 이미 rm -rf / --no-verify / curl|sh / git push --force 처리
             JSON 추상화가 복잡성만 추가, 기존 패턴 3개 실효성 없음 (SELECT *, eval(, sleep(0))
@@ -207,7 +207,7 @@
       SCALE=2: + feature/* 브랜치, PR 워크플로우, 훅 중간 강도
       SCALE=3: + main/develop/feature 3단계 브랜치, ADR 강제, 훅 최고 강도
 
-- [ ] [스킬新] /PR 스킬 신규 작성
+- [x] [스킬新] /PR 스킬 신규 작성
       staged → /commit → push → gh pr create 자동화 (push 전 confirm 필수)
 
 - [ ] [스킬7] ai-readiness-cartography 캐시 로직 추가
