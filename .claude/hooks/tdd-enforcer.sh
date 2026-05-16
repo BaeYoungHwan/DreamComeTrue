@@ -103,6 +103,42 @@ if [ "$EXT" = "rs" ]; then
   fi
 fi
 
+# Java 패턴 (JUnit: StemTest.java)
+if [ "$EXT" = "java" ]; then
+  for pattern in     "${DIRNAME}/${STEM}Test.java"     "src/test/java/${STEM}Test.java"     "tests/${STEM}Test.java"
+  do
+    if [ -f "$pattern" ]; then
+      TEST_EXISTS=true
+      break
+    fi
+    EXPECTED_PATHS+=("$pattern")
+  done
+fi
+
+# Ruby 패턴 (RSpec: stem_spec.rb)
+if [ "$EXT" = "rb" ]; then
+  for pattern in     "${DIRNAME}/${STEM}_spec.rb"     "spec/${STEM}_spec.rb"     "${DIRNAME}/test_${STEM}.rb"
+  do
+    if [ -f "$pattern" ]; then
+      TEST_EXISTS=true
+      break
+    fi
+    EXPECTED_PATHS+=("$pattern")
+  done
+fi
+
+# PHP 패턴 (PHPUnit: StemTest.php)
+if [ "$EXT" = "php" ]; then
+  for pattern in     "${DIRNAME}/${STEM}Test.php"     "tests/${STEM}Test.php"
+  do
+    if [ -f "$pattern" ]; then
+      TEST_EXISTS=true
+      break
+    fi
+    EXPECTED_PATHS+=("$pattern")
+  done
+fi
+
 if [ "$TEST_EXISTS" = "false" ]; then
   echo "⚠️  [TDD 강제] 테스트 파일이 없습니다." >&2
   echo "   구현 파일: $FILE_PATH" >&2

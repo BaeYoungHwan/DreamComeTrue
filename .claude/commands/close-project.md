@@ -134,7 +134,13 @@ n 선택 시 종료. y 선택 시 계속 진행.
 python -c "
 import datetime, os, pathlib
 
-project_name = '[CLAUDE.md에서 추출]'
+try:
+    import re as _re
+    _claude_text = pathlib.Path('CLAUDE.md').read_text(encoding='utf-8')
+    _m = _re.search(r'^#\s+(.+)', _claude_text, _re.MULTILINE)
+    project_name = _m.group(1).strip() if _m else '(프로젝트명 미설정)'
+except FileNotFoundError:
+    project_name = '(CLAUDE.md 없음)'
 close_date = datetime.date.today().isoformat()
 completed = list(pathlib.Path('docs/exec-plans/completed').glob('*')) if pathlib.Path('docs/exec-plans/completed').exists() else []
 phase_list = ''.join(f'<li>{p.name}</li>' for p in completed)

@@ -35,8 +35,8 @@ if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--force|git\s+push\s+-f'; then
   block "강제 푸시(git push --force)는 차단됩니다."
 fi
 
-# 5. 재귀 삭제 차단
-if echo "$COMMAND" | grep -iqE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r'; then
+# 5. 재귀 삭제 차단 (합쳐진 플래그: -rf/-fr, 또는 분리된 플래그: -r -f)
+if echo "$COMMAND" | grep -iqE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r' ||    { echo "$COMMAND" | grep -iqE '(^|[[:space:];|&])rm[[:space:]]' &&      echo "$COMMAND" | grep -qE '[[:space:]]-[a-zA-Z]*r([[:space:]]|$)' &&      echo "$COMMAND" | grep -qE '[[:space:]]-[a-zA-Z]*f([[:space:]]|$)'; }; then
   block "재귀 강제 삭제(rm -rf)는 차단됩니다."
 fi
 

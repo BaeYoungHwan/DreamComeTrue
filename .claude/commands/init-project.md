@@ -750,15 +750,15 @@ Read → Edit 방식으로 JSON을 직접 수정한다.
 `CONTRIBUTING.md` 파일을 프로젝트 루트에 생성한다. SCALE에 따라 내용이 달라진다:
 
 **SCALE = 1 (개인):**
-```markdown
+````markdown
 # 기여 가이드
 
 이 프로젝트는 1인 프로젝트입니다.
 main 브랜치에 직접 커밋하며, 커밋 컨벤션은 `.claude/commands/commit.md`를 따릅니다.
-```
+````
 
 **SCALE = 2 (스타트업):**
-```markdown
+````markdown
 # 기여 가이드
 
 ## 브랜치 전략
@@ -773,10 +773,10 @@ main 브랜치에 직접 커밋하며, 커밋 컨벤션은 `.claude/commands/com
 
 ## 커밋 컨벤션
 `.claude/commands/commit.md` 참조
-```
+````
 
 **SCALE = 3 (회사):**
-```markdown
+````markdown
 # 기여 가이드
 
 ## 브랜치 전략
@@ -796,7 +796,7 @@ main 브랜치에 직접 커밋하며, 커밋 컨벤션은 `.claude/commands/com
 
 ## 커밋 컨벤션
 `.claude/commands/commit.md` 참조
-```
+````
 
 ---
 
