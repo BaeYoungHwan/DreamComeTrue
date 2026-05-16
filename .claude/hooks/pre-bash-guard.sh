@@ -31,7 +31,7 @@ if echo "$COMMAND" | grep -qE '(curl|wget).*(sh|bash)|sh\s*<\s*\(curl'; then
 fi
 
 # 4. 강제 푸시 차단 (settings.json deny와 이중 방어)
-if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--force|git\s+push\s+-f'; then
+if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--force|git\s+push\s+-f\b'; then
   block "강제 푸시(git push --force)는 차단됩니다."
 fi
 

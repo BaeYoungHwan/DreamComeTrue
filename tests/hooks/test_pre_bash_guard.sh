@@ -73,6 +73,10 @@ assert "1" "$result" "eval \"\$PAYLOAD\" → 차단"
 result=$(run_hook "pre-bash-guard.sh" '{"tool_name":"Bash","tool_input":{"command":"eval $(cat /tmp/script.sh)"}}')
 assert "1" "$result" "eval \$(cmd) → 차단"
 
+# 14. git push -f 차단 (단축 플래그)
+result=$(run_hook "pre-bash-guard.sh" '{"tool_name":"Bash","tool_input":{"command":"git push -f origin main"}}')
+assert "1" "$result" "git push -f origin main → 차단"
+
 echo ""
 echo "  결과: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -gt 0 ] && exit 1 || exit 0
