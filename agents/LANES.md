@@ -72,4 +72,4 @@ model: sonnet
 | `example-agent.md` | - | sonnet | 템플릿 |
 | `code-reviewer.md` | Review | sonnet | 활성 |
 | `doc-gardener.md` | Review | haiku | 활성 |
-| `step-validator.md` | Verification Lane | sonnet | 활성 |
+| `step-validator.md` | Verification | sonnet | 활성 |

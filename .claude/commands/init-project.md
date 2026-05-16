@@ -305,7 +305,7 @@ git push -u origin main
 
 ```
 === [F] 이메일 알림 설정 ===
-step-validator 최종 실패 시 이메일 알림을 설정할까요?
+step-validator 알림(Plan 모드 Phase 완료 리포트 + 최종 실패 알림)을 설정할까요?
 
 1. 설정 — .env에 SMTP 플레이스홀더를 추가합니다
 2. 건너뜀
@@ -878,6 +878,7 @@ SMTP_PASSWORD=your-smtp-password
 logs/
 *.log
 docs/ref/session-state.md
+.cache/
 ```
 
 추가 후, 이미 git 추적 중인 파일이 있으면 `git rm --cached` 안내를 출력한다:
