@@ -31,9 +31,9 @@ git log --oneline -10
 git diff <BASE_COMMIT>..HEAD --name-only
 ```
 
-> `BASE_COMMIT`: ultrawork가 시작되기 직전의 커밋 해시.
-> ultrawork 실행 시 컨텍스트에서 확인하거나, `git log`로 병렬 태스크 시작 지점을 추론한다.
-> HEAD~1은 마지막 커밋 하나만 잡으므로 다수 커밋 생성 시 범위가 불완전함.
+> `BASE_COMMIT`: ultrawork **6단계 시작 전** `git rev-parse HEAD`로 캡처한 커밋 해시.
+> ultrawork가 이 값을 명시적으로 전달한다.
+> 값이 없는 경우 폴백: `git log --oneline | wc -l`로 병렬 커밋 수(N)를 추론해 `HEAD~N` 사용.
 
 - 변경된 파일 목록 수집
 - ultrawork 태스크 명세와 비교해 의도치 않은 파일 변경 감지
