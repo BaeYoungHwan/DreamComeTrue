@@ -12,7 +12,8 @@ mkdir -p "$LOG_DIR"
 
 # 로그 로테이션: 5MB 초과 시 최대 5세대 회전
 if [ -f "$REPLAY_LOG" ] && [ "$(wc -c < "$REPLAY_LOG")" -gt 5242880 ]; then
-  for i in 5 4 3 2 1; do
+  rm -f "${REPLAY_LOG}.5"
+  for i in 4 3 2 1; do
     [ -f "${REPLAY_LOG}.${i}" ] && mv "${REPLAY_LOG}.${i}" "${REPLAY_LOG}.$((i+1))"
   done
   mv "$REPLAY_LOG" "${REPLAY_LOG}.1"

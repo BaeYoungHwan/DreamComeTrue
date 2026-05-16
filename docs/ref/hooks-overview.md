@@ -8,7 +8,7 @@
 
 | 훅 파일 | 단계 | matcher | sync/async | 기본 등록 | 차단 조건 |
 |--------|------|---------|-----------|----------|---------|
-| `pre-bash-guard.sh` | PreToolUse | Bash | sync | ✅ | 위험 패턴 7종 (rm -rf, --no-verify, curl\|sh, git push --force, DROP, chmod 777, eval()) |
+| `pre-bash-guard.sh` | PreToolUse | Bash | sync | ✅ | 위험 패턴 10종 (--no-verify, 자격증명, curl\|sh, git push --force, rm -rf, SELECT \* FROM, DROP, TRUNCATE, chmod 777, eval) |
 | `tdd-enforcer.sh` | PreToolUse | Write\|Edit | sync | ✅ | 신규 파일 테스트 없음 / strict 모드에서는 기존 파일도 체크 |
 | `post-bash-audit.sh` | PostToolUse | Bash | async | ✅ | 차단 없음 — `logs/claude-audit.log`에 기록만 |
 | `circuit-breaker.sh` | PostToolUse | Bash | async | ✅ | 동일 에러 3회 반복 시 작업 중단 |

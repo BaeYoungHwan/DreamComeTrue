@@ -50,7 +50,7 @@
 - `agents/security-reviewer.md`, `step-validator.md`, `_templates/domain-agent.tpl.md` 신규
 - `docs/ref/tdd-guide.md`, `architecture-guide.md`, `quality-guide.md` 신규
 - `tdd-enforcer.sh`: Java/Ruby/PHP 지원, EXPECTED_PATHS 출력
-- `pre-bash-guard.sh`: DROP/TRUNCATE/chmod 777/eval() 패턴 추가
+- `pre-bash-guard.sh`: DROP/TRUNCATE/chmod 777/eval()/SELECT * FROM 패턴 추가 (deny-patterns.json 전체 마이그레이션)
 - `deny-list-guard.sh` + `deny-patterns.json` 폐지 → `pre-bash-guard.sh` 통합
 
 ### 수정

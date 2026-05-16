@@ -928,7 +928,7 @@ docs/ref/session-state.md
   /schedule 스킬로 등록하세요:
   [AI_READINESS_CYCLE=1]  → /schedule 명령으로 매주 월요일 /ai-readiness-cartography 실행 등록
   [AI_READINESS_CYCLE=2]  → /schedule 명령으로 매월 1일 /ai-readiness-cartography 실행 등록
-  git 커밋이 30일 이상 없으면 스케줄이 자동 일시정지됩니다.
+  비활성 프로젝트가 되면 `/schedule cancel [ID]` 로 스케줄을 수동 중단하세요.
 
 다음 단계:
   1. docs/design-docs/architecture-v1.md 검토 → 방향 수정이 있으면 알려주세요
