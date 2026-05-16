@@ -66,7 +66,7 @@
 | 훅 | 로그 파일 |
 |----|---------|
 | `post-bash-audit.sh` | `logs/claude-audit.log` (5세대 로테이션, 5MB 초과 시) |
-| `circuit-breaker.sh` | `logs/circuit-breaker-errors.log` |
+| `circuit-breaker.sh` | `logs/circuit-breaker.log` (차단 이벤트 영구 기록) / `logs/.cb-error-history` (에러 추적 임시 파일, 성공 시 초기화) |
 | `session-replay.sh` | `logs/agent-replay.jsonl` (5세대 로테이션) |
 | `session-persist.sh` | `docs/ref/session-state.md` |
 
