@@ -22,7 +22,7 @@ model: sonnet
 
 ### 🔍 Review Lane
 **역할**: 코드 검토, 보안 분석, 품질 검증
-**특징**: 읽기 전용, 다른 에이전트 결과 검토
+**특징**: 파일 작성 없음. lint·테스트 실행은 허용 (step-validator). 다른 에이전트 결과 검토.
 **예시 에이전트**: `code-reviewer.md`
 **권장 모델**: Sonnet
 
@@ -50,10 +50,30 @@ model: sonnet
 
 ## 에이전트 생성 규칙
 
-1. `agents/example-agent.md`를 복사해서 시작
+1. `agents/_templates/domain-agent.tpl.md`를 복사해서 시작
 2. 레인 결정 후 `description`에 명시
 3. 단일 책임 원칙: 하나의 에이전트는 하나의 역할만
 4. 레인 간 의존성 최소화
+
+---
+
+## 에이전트 생성 기준
+
+> SCALE(프로젝트 규모)과 무관하게 인터뷰 기반으로 결정합니다.
+
+| 에이전트 | 생성 조건 |
+|---------|---------|
+| `code-reviewer` | **항상 생성** (모든 SCALE) |
+| `step-validator` | **항상 생성** (모든 SCALE) |
+| `security-reviewer` | 배포 예정 또는 민감 데이터(결제·개인정보) 처리 시 |
+| 도메인 에이전트 | `/init-project` 도메인 테마 선택 시 (`_templates/` 복사·치환) |
+
+### `_templates/` 폴더 사용법
+
+1. `agents/_templates/domain-agent.tpl.md` 복사
+2. 파일명을 `<도메인명>-agent.md` 로 변경
+3. 플레이스홀더 4개 치환: `{{DOMAIN_NAME}}`, `{{DOMAIN_DESC}}`, `{{DOMAIN_RULES}}`, `{{DOMAIN_FILES}}`
+4. `agents/` 폴더에 배치
 
 ---
 
@@ -61,6 +81,7 @@ model: sonnet
 
 | 에이전트 | 레인 | 모델 | 상태 |
 |----------|------|------|------|
-| `example-agent.md` | - | sonnet | 템플릿 |
-| `code-reviewer.md` | Review | sonnet | 활성 |
-| `doc-gardener.md` | Review | haiku | 활성 |
+| `code-reviewer.md` | Review Lane | sonnet | 활성 |
+| `doc-gardener.md` | Review Lane | haiku | 활성 |
+| `security-reviewer.md` | Review Lane | sonnet | 활성 |
+| `step-validator.md` | Review Lane | sonnet | 활성 |

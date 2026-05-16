@@ -38,3 +38,6 @@ Thumbs.db
 
 # Claude Code
 .claude/sessions/
+
+# 세션 상태 (로컬 전용)
+docs/ref/session-state.md

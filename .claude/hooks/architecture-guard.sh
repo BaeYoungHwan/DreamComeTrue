@@ -49,13 +49,13 @@ warn() {
   if [ -f "$STRICT_FLAG" ]; then
     echo "🚫 [아키텍처 차단] $msg" >&2
     echo "   파일: $FILE_PATH (레이어: $CURRENT_LAYER)" >&2
-    echo "   규칙: docs/design-docs/architecture-layers.md 참조" >&2
+    echo "   규칙: docs/ref/architecture-guide.md 참조" >&2
     echo "   엄격 모드: 레이어 위반은 허용되지 않습니다. (.claude/hooks-strict.flag)" >&2
     exit 1
   fi
   echo "⚠️  [아키텍처 경고] $msg" >&2
   echo "   파일: $FILE_PATH (레이어: $CURRENT_LAYER)" >&2
-  echo "   규칙: docs/design-docs/architecture-layers.md 참조" >&2
+  echo "   규칙: docs/ref/architecture-guide.md 참조" >&2
 }
 
 # Domain 레이어가 Presentation 또는 Infrastructure를 직접 참조하는지 검사

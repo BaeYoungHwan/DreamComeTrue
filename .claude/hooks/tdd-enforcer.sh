@@ -38,6 +38,7 @@ fi
 
 # 테스트 파일 존재 여부 확인 (여러 위치 검색)
 TEST_EXISTS=false
+EXPECTED_PATHS=()
 
 # Python 패턴
 if [ "$EXT" = "py" ]; then
@@ -47,7 +48,11 @@ if [ "$EXT" = "py" ]; then
     "tests/test_${STEM}.py" \
     "tests/${STEM}/test_${STEM}.py"
   do
-    [ -f "$pattern" ] && TEST_EXISTS=true && break
+    if [ -f "$pattern" ]; then
+      TEST_EXISTS=true
+      break
+    fi
+    EXPECTED_PATHS+=("$pattern")
   done
 fi
 
@@ -59,7 +64,11 @@ if echo "$EXT" | grep -qE '^(ts|tsx|js|jsx)$'; then
     "__tests__/${STEM}.test.${EXT}" \
     "tests/${STEM}.test.${EXT}"
   do
-    [ -f "$pattern" ] && TEST_EXISTS=true && break
+    if [ -f "$pattern" ]; then
+      TEST_EXISTS=true
+      break
+    fi
+    EXPECTED_PATHS+=("$pattern")
   done
 fi
 
@@ -69,7 +78,11 @@ if [ "$EXT" = "go" ]; then
     "${DIRNAME}/${STEM}_test.go" \
     "tests/${STEM}_test.go"
   do
-    [ -f "$pattern" ] && TEST_EXISTS=true && break
+    if [ -f "$pattern" ]; then
+      TEST_EXISTS=true
+      break
+    fi
+    EXPECTED_PATHS+=("$pattern")
   done
 fi
 
@@ -81,7 +94,11 @@ if [ "$EXT" = "rs" ]; then
       "${DIRNAME}/${STEM}_test.rs" \
       "tests/${STEM}.rs"
     do
-      [ -f "$pattern" ] && TEST_EXISTS=true && break
+      if [ -f "$pattern" ]; then
+        TEST_EXISTS=true
+        break
+      fi
+      EXPECTED_PATHS+=("$pattern")
     done
   fi
 fi
@@ -89,10 +106,14 @@ fi
 if [ "$TEST_EXISTS" = "false" ]; then
   echo "⚠️  [TDD 강제] 테스트 파일이 없습니다." >&2
   echo "   구현 파일: $FILE_PATH" >&2
+  echo "   예상 테스트 경로 (아래 중 하나 생성):" >&2
+  for p in "${EXPECTED_PATHS[@]}"; do
+    echo "     - $p" >&2
+  done
   echo "   먼저 테스트 파일을 작성하세요. (/tdd 스킬 참조)" >&2
   echo "   테스트 없이 진행하려면 Not-done: 이유를 커밋 메시지에 명시하세요." >&2
   echo "" >&2
-  echo "   계속 진행하려면 먼저 테스트 파일을 생성하세요." >&2
+  echo "   비활성화 방법: .claude/hooks-strict.flag 삭제 후 settings.json에서 tdd-enforcer.sh 항목 제거" >&2
   exit 1
 fi
 

@@ -31,6 +31,14 @@ description: Audits any repository against the v2 AI-Ready rubric (100 pts · 7 
 
 ## Workflow
 
+**스텝 0 — 캐시 확인 (변경 없으면 재스캔 생략)**
+
+다음 조건을 모두 만족하면 캐시된 결과를 반환하고 스캔을 생략한다:
+- `.cache/ai-readiness-last-run` 파일이 존재하고
+- 해당 타임스탬프 이후 `CLAUDE.md`, `docs/`, `agents/`, `.claude/` 내 파일 변경이 없는 경우
+
+조건 불만족 시 → 정상 스캔 진행 후 `.cache/ai-readiness-last-run` 타임스탬프 갱신
+
 ### 1. Python 스크립트로 자동 채점
 
 ```bash

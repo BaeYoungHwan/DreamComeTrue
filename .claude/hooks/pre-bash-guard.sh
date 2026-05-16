@@ -31,13 +31,26 @@ if echo "$COMMAND" | grep -qE '(curl|wget).*(sh|bash)|sh\s*<\s*\(curl'; then
 fi
 
 # 4. 강제 푸시 차단 (settings.json deny와 이중 방어)
-if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--force|git\s+push\s+-f\b'; then
+if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--force|git\s+push\s+-f'; then
   block "강제 푸시(git push --force)는 차단됩니다."
 fi
 
 # 5. 재귀 삭제 차단
 if echo "$COMMAND" | grep -iqE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r'; then
   block "재귀 강제 삭제(rm -rf)는 차단됩니다."
+fi
+
+# 6. DB 파괴 명령 및 위험 권한 변경 차단
+if echo "$COMMAND" | grep -iqE 'DROP\s+TABLE|DROP\s+DATABASE'; then
+  block "DROP TABLE/DROP DATABASE는 차단됩니다. 되돌릴 수 없는 DB 파괴 명령입니다."
+fi
+
+if echo "$COMMAND" | grep -iqE '\bTRUNCATE\b'; then
+  block "TRUNCATE는 차단됩니다. 테이블 전체 삭제 명령입니다."
+fi
+
+if echo "$COMMAND" | grep -iqE 'chmod\s+777'; then
+  block "chmod 777은 차단됩니다. 전체 권한 부여는 보안 취약점입니다."
 fi
 
 exit 0

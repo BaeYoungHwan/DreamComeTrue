@@ -39,6 +39,11 @@
 - Plan 모드로 설계 후 독립적으로 분리 가능한 작업은 반드시 에이전트로 병렬 실행
 - 에이전트 분류 기준 → [`agents/LANES.md`](agents/LANES.md)
 
+**Plan 모드 실행 흐름**:
+- 독립 태스크 3개+ → `/ultrawork`
+- 독립 태스크 1~2개 → `/ralph`
+- 단순 작업 → 직접 실행
+
 ---
 
 ## 작업 흐름
@@ -79,9 +84,10 @@
 ├── .claude/
 │   ├── settings.json          # 권한 + 훅 등록
 │   ├── hooks/                 # 보안·감사·세션 훅
-│   └── commands/              # 슬래시 스킬
+│   ├── commands/              # 슬래시 스킬
+│   └── skills/                # 하네스 내부 실행 스크립트 (score.py, analyze_sessions.py 등)
 ├── .claude-plugin/            # 마켓플레이스 플러그인 메타데이터
-├── skills/                    # 마켓플레이스 배포용 스킬
+├── skills/                    # 마켓플레이스 배포용 — 다른 프로젝트가 설치 가능한 SKILL.md
 ├── agents/                    # 병렬 에이전트
 ├── docs/
 │   ├── ref/                   # 참조 문서 (필요할 때만 로드)
