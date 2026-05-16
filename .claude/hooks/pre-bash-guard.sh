@@ -58,6 +58,7 @@ if echo "$COMMAND" | grep -iqE 'chmod\s+777'; then
 fi
 
 # 7. 코드 인젝션 패턴 차단
+# \beval\b: bash eval cmd / eval $(...) 형태까지 모두 차단. \beval\s*\(는 bash 형태 미탐 — 패턴 변경 금지
 if echo "$COMMAND" | grep -qE '\beval\b'; then
   block "eval 실행은 차단됩니다. 코드 인젝션 위험이 있습니다."
 fi
