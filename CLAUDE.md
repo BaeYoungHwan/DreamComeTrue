@@ -10,6 +10,7 @@
 - 민감정보(API 키 등): `.env` 관리, 절대 커밋 금지
 - CLAUDE.md는 핵심 규칙만 유지 — 특정 상황 규칙은 `docs/ref/`에 배치
 - AI 행동 원칙 (코딩 전 사고, 단순함, 수술적 변경, 목표 중심) → [`docs/ref/behavioral-principles.md`](docs/ref/behavioral-principles.md)
+- 브랜치 생성 금지: 사용자 명시 지시 없이 `git checkout -b`, `git switch -c` 실행 불가
 
 ---
 
