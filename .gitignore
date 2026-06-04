@@ -44,3 +44,7 @@ docs/ref/session-state.md
 
 # 캐시 (로컬 전용)
 .cache/
+
+# AI-readiness 스킬 생성 결과물 (로컬 전용)
+docs/ai-readiness-map.html
+docs/ai-readiness-score.json
