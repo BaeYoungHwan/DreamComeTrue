@@ -113,3 +113,23 @@ def test_variant_price_and_order_golden_path():
     ).fetchone()[0]
     conn.close()
     assert status == "출고완료"
+
+
+def test_all_channels_settlement_summary_golden_path():
+    """채널 등록 -> 판매 -> 전체 채널 정산 요약 조회 -> 엑셀 다운로드까지의 골든패스."""
+    at = AppTest.from_file("app.py")
+    at.run()
+    assert not at.exception
+
+    channel_name = f"테스트매장_{uuid.uuid4().hex[:8]}"
+    at.text_input(key="channel_form_name").set_value(channel_name)
+    at.selectbox(key="channel_form_type").set_value("consignment")
+    at.number_input(key="channel_form_rate").set_value(10.0)
+    at.button(key="FormSubmitter:channel_form-등록").click().run()
+    assert not at.exception
+
+    at.button(key="summary_calc").click().run()
+
+    assert not at.exception
+    summary_table = at.table[-1].value
+    assert channel_name in summary_table["채널"].values

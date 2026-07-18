@@ -7,6 +7,7 @@ from src.inventory.stock import record_transaction
 from src.sales.sales import record_sale
 from src.settlement.channels import create_channel
 from src.settlement.settlement import (
+    all_channels_settlement,
     channel_settlement,
     deposit_discrepancy,
     list_settlements,
@@ -112,6 +113,33 @@ def test_dod_golden_ledger_case_flags_discrepancy(tmp_path):
 
     assert discrepancy["has_error"] is True
     assert discrepancy["diff"] == -3260
+
+
+def test_all_channels_settlement_returns_one_result_per_channel(tmp_path):
+    conn, channel_id, item_id = _conn_with_channel_and_stock(tmp_path, commission_rate=10)
+    other_channel_id = create_channel(conn, "어양점", "consignment", 12)
+    record_sale(conn, item_id, "모현점", 10, 1000, sold_on="2026-06-15", channel_id=channel_id)
+    record_sale(
+        conn, item_id, "어양점", 5, 2000, sold_on="2026-06-16", channel_id=other_channel_id
+    )
+
+    results = all_channels_settlement(conn, "2026-06-01", "2026-06-30")
+    conn.close()
+
+    by_name = {r["channel_name"]: r for r in results}
+    assert by_name["모현점"]["sales_total"] == 10000
+    assert by_name["어양점"]["sales_total"] == 10000
+    assert by_name["어양점"]["commission_rate"] == 12
+
+
+def test_all_channels_settlement_includes_channel_with_no_sales(tmp_path):
+    conn, channel_id, item_id = _conn_with_channel_and_stock(tmp_path)
+    create_channel(conn, "평화점", "consignment", 12)
+
+    results = all_channels_settlement(conn, "2026-06-01", "2026-06-30")
+    conn.close()
+
+    assert {r["channel_name"] for r in results} == {"모현점", "평화점"}
 
 
 def test_save_and_list_settlements(tmp_path):

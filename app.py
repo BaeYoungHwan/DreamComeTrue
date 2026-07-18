@@ -13,6 +13,7 @@ from src.dashboard.dashboard import (
     today_shipments,
 )
 from src.export.report import (
+    all_channels_settlement_to_excel_bytes,
     export_all_data_to_excel_bytes,
     period_report,
     report_to_excel_bytes,
@@ -56,7 +57,12 @@ from src.settlement.channels import (
     list_channels,
     update_channel,
 )
-from src.settlement.settlement import channel_settlement, deposit_discrepancy, save_settlement
+from src.settlement.settlement import (
+    all_channels_settlement,
+    channel_settlement,
+    deposit_discrepancy,
+    save_settlement,
+)
 
 st.set_page_config(page_title="local-farm-inventory", layout="centered")
 st.title("로컬 팜 인벤토리")
@@ -537,6 +543,45 @@ with tab_report:
             )
         else:
             st.info("해당 기간에 판매 기록이 없습니다.")
+
+    st.divider()
+    st.subheader("전체 채널 정산 요약")
+    st.caption("등록된 모든 채널을 한 화면에서 비교합니다. 매장별로 하나씩 볼 필요 없이 전체 현황을 확인하세요.")
+    all_channels_now = list_channels(conn)
+    if not all_channels_now:
+        st.info("'채널 관리' 탭에서 먼저 채널을 등록해주세요.")
+    else:
+        sum_col1, sum_col2 = st.columns(2)
+        summary_start = sum_col1.date_input("시작일", key="summary_start")
+        summary_end = sum_col2.date_input("종료일", key="summary_end")
+
+        if st.button("전체 채널 조회", key="summary_calc"):
+            st.session_state["summary_results"] = all_channels_settlement(
+                conn, summary_start.isoformat(), summary_end.isoformat()
+            )
+            st.session_state["summary_range"] = (summary_start, summary_end)
+
+        if "summary_results" in st.session_state:
+            summary_results = st.session_state["summary_results"]
+            summary_range_start, summary_range_end = st.session_state["summary_range"]
+            st.table(
+                [
+                    {
+                        "채널": r["channel_name"],
+                        "판매누계": r["sales_total"],
+                        "수수료율(%)": r["commission_rate"],
+                        "수수료": r["commission_amount"],
+                        "예상입금액": r["expected_deposit"],
+                    }
+                    for r in summary_results
+                ]
+            )
+            st.download_button(
+                "전체 채널 정산 엑셀 다운로드",
+                data=all_channels_settlement_to_excel_bytes(summary_results),
+                file_name=f"전체채널정산_{summary_range_start}_{summary_range_end}.xlsx",
+                key="summary_download",
+            )
 
     st.divider()
     st.subheader("채널별 정산 (수수료 자동계산)")

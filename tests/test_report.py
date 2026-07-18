@@ -4,6 +4,7 @@ from openpyxl import load_workbook
 
 from src.core.db import get_connection, init_db
 from src.export.report import (
+    all_channels_settlement_to_excel_bytes,
     export_all_data_to_excel_bytes,
     period_report,
     report_to_excel_bytes,
@@ -113,3 +114,40 @@ def test_settlement_to_excel_bytes_contains_expected_row():
         260800,
         -3260,
     ]
+
+
+def test_all_channels_settlement_to_excel_bytes_contains_one_row_per_channel():
+    results = [
+        {
+            "channel_name": "모현점",
+            "period_start": "2026-06-01",
+            "period_end": "2026-06-30",
+            "sales_total": 293400,
+            "commission_rate": 10,
+            "commission_amount": 29340,
+            "expected_deposit": 264060,
+            "actual_deposit": None,
+            "diff": None,
+        },
+        {
+            "channel_name": "어양점",
+            "period_start": "2026-06-01",
+            "period_end": "2026-06-30",
+            "sales_total": 120000,
+            "commission_rate": 10,
+            "commission_amount": 12000,
+            "expected_deposit": 108000,
+            "actual_deposit": None,
+            "diff": None,
+        },
+    ]
+
+    data = all_channels_settlement_to_excel_bytes(results)
+    wb = load_workbook(io.BytesIO(data))
+    ws = wb.active
+
+    header = [cell.value for cell in ws[1]]
+    assert header == ["채널", "기간", "판매누계", "수수료율(%)", "수수료", "예상입금액", "실입금액", "차액"]
+    assert ws[2][0].value == "모현점"
+    assert ws[3][0].value == "어양점"
+    assert ws[3][2].value == 120000

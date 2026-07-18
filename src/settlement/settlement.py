@@ -1,7 +1,7 @@
 """채널별 정산 — 판매누계·수수료·예상입금액 계산 및 입금 대사."""
 import sqlite3
 
-from src.settlement.channels import get_channel
+from src.settlement.channels import get_channel, list_channels
 
 
 def channel_settlement(
@@ -33,6 +33,15 @@ def channel_settlement(
         "commission_amount": commission_amount,
         "expected_deposit": expected_deposit,
     }
+
+
+def all_channels_settlement(
+    conn: sqlite3.Connection, start_date: str, end_date: str
+) -> list[dict]:
+    return [
+        channel_settlement(conn, channel["id"], start_date, end_date)
+        for channel in list_channels(conn)
+    ]
 
 
 def deposit_discrepancy(expected_deposit: float, actual_deposit: float) -> dict:

@@ -66,6 +66,32 @@ def settlement_to_excel_bytes(result: dict[str, Any]) -> bytes:
     return buf.getvalue()
 
 
+def all_channels_settlement_to_excel_bytes(results: list[dict[str, Any]]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "전체채널정산"
+    ws.append(
+        ["채널", "기간", "판매누계", "수수료율(%)", "수수료", "예상입금액", "실입금액", "차액"]
+    )
+    for result in results:
+        ws.append(
+            [
+                result.get("channel_name"),
+                f"{result.get('period_start')} ~ {result.get('period_end')}",
+                result.get("sales_total"),
+                result.get("commission_rate"),
+                result.get("commission_amount"),
+                result.get("expected_deposit"),
+                result.get("actual_deposit"),
+                result.get("diff"),
+            ]
+        )
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def export_all_data_to_excel_bytes(conn: sqlite3.Connection) -> bytes:
     wb = Workbook()
 
