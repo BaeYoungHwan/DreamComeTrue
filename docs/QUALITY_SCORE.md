@@ -20,7 +20,12 @@
 
 | 도메인 | 등급 | 테스트 커버리지 | 마지막 검토 | 비고 |
 |--------|------|----------------|-------------|------|
-| (없음) | - | - | - | 프로젝트 시작 후 업데이트 |
+| core (db/backup) | A | 테스트 7개, 스키마·백업 로직 전체 커버 | 2026-07-18 | Phase 0 완료 (`src/core/db.py`, `src/core/backup.py`) |
+| inventory (items/stock) | A | 테스트 12개, 커스텀 속성·재고 계산·음수 방지 전체 커버 | 2026-07-18 | Phase 1 완료 (`src/inventory/items.py`, `src/inventory/stock.py`) |
+| sales | A | 테스트 3개, 출고 연동·매출 계산·재고 부족 예외 커버 | 2026-07-18 | Phase 1 완료 (`src/sales/sales.py`) |
+| dashboard | A | 테스트 3개, 오늘 출하·이달 매출·순위 집계 커버 | 2026-07-18 | Phase 1 완료 (`src/dashboard/dashboard.py`) |
+| export (report) | A | 테스트 3개, 기간 집계·엑셀 생성 커버 + 브라우저 실다운로드 검증 | 2026-07-18 | Phase 1 완료 (`src/export/report.py`) |
+| app (Streamlit UI) | B | AppTest 1개 (렌더링만) + 브라우저 골든 패스 수동 검증 | 2026-07-18 | Phase 1 완료. 스레드 버그(`check_same_thread`) 발견·수정 |
 
 ---
 

@@ -1,0 +1,63 @@
+import io
+
+from openpyxl import load_workbook
+
+from src.core.db import get_connection, init_db
+from src.export.report import (
+    export_all_data_to_excel_bytes,
+    period_report,
+    report_to_excel_bytes,
+)
+from src.inventory.items import create_item
+
+
+def _seed_sale(conn, item_id, buyer, quantity, unit_price, sold_at):
+    total = quantity * unit_price
+    conn.execute(
+        """
+        INSERT INTO sales (item_id, buyer, quantity, unit_price, total_amount, sold_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (item_id, buyer, quantity, unit_price, total, sold_at),
+    )
+    conn.commit()
+
+
+def test_period_report_aggregates_within_date_range(tmp_path):
+    conn = get_connection(str(tmp_path / "farm.db"))
+    init_db(conn)
+    item_id = create_item(conn, "상추", "kg")
+
+    _seed_sale(conn, item_id, "로컬푸드 매장", 3, 2000, "2026-07-10 09:00:00")
+    _seed_sale(conn, item_id, "직거래", 2, 2500, "2026-07-15 09:00:00")
+    _seed_sale(conn, item_id, "직거래", 1, 2500, "2026-08-01 09:00:00")
+
+    report = period_report(conn, "2026-07-01", "2026-07-31")
+    conn.close()
+
+    assert report == [
+        {"item_name": "상추", "total_quantity": 5, "total_amount": 11000}
+    ]
+
+
+def test_report_to_excel_bytes_contains_expected_rows():
+    rows = [{"item_name": "상추", "total_quantity": 5, "total_amount": 11000}]
+
+    data = report_to_excel_bytes(rows)
+    wb = load_workbook(io.BytesIO(data))
+    ws = wb.active
+
+    assert [cell.value for cell in ws[1]] == ["품목", "출하량", "판매대금"]
+    assert [cell.value for cell in ws[2]] == ["상추", 5, 11000]
+
+
+def test_export_all_data_to_excel_bytes_creates_three_sheets(tmp_path):
+    conn = get_connection(str(tmp_path / "farm.db"))
+    init_db(conn)
+    create_item(conn, "상추", "kg")
+
+    data = export_all_data_to_excel_bytes(conn)
+    conn.close()
+    wb = load_workbook(io.BytesIO(data))
+
+    assert set(wb.sheetnames) == {"품목", "입출고내역", "판매내역"}

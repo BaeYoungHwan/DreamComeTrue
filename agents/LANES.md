@@ -73,3 +73,4 @@ model: sonnet
 | `code-reviewer.md` | Review | sonnet | 활성 |
 | `doc-gardener.md` | Review | haiku | 활성 |
 | `step-validator.md` | Verification | sonnet | 활성 |
+| `inventory-agent.md` | Domain | sonnet | 활성 |
