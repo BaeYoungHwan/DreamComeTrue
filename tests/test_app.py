@@ -1,6 +1,14 @@
 import uuid
 
+import pytest
 from streamlit.testing.v1 import AppTest
+
+
+@pytest.fixture(autouse=True)
+def _isolated_farm_db(tmp_path, monkeypatch):
+    """AppTest가 app.py를 실제로 실행하므로, 격리된 임시 DB를 쓰도록 강제해
+    실제 운영 데이터(data/farm.db)에 테스트 흔적이 남지 않게 한다."""
+    monkeypatch.setenv("FARM_DB_PATH", str(tmp_path / "test_farm.db"))
 
 
 def test_app_runs_without_exception():
@@ -57,7 +65,9 @@ def test_channel_registration_and_settlement_discrepancy_golden_path():
 
 def test_variant_price_and_order_golden_path():
     """품목 등록 -> 변형(가격 마스터) 등록 -> 입고 -> 주문 접수 -> 출고 처리까지의 골든패스."""
-    from src.core.db import DEFAULT_DB_PATH, get_connection
+    import os
+
+    from src.core.db import get_connection
 
     at = AppTest.from_file("app.py")
     at.run()
@@ -69,7 +79,7 @@ def test_variant_price_and_order_golden_path():
     at.button(key="FormSubmitter:item_form-등록").click().run()
     assert not at.exception
 
-    conn = get_connection(DEFAULT_DB_PATH)
+    conn = get_connection(os.environ["FARM_DB_PATH"])
     item_id = conn.execute(
         "SELECT id FROM items WHERE name = ?", (item_name,)
     ).fetchone()[0]
@@ -105,7 +115,7 @@ def test_variant_price_and_order_golden_path():
     ship_buttons[0].click().run()
 
     assert not at.exception
-    conn = get_connection(DEFAULT_DB_PATH)
+    conn = get_connection(os.environ["FARM_DB_PATH"])
     status = conn.execute(
         "SELECT status FROM orders WHERE customer_name = '홍길동' AND variant_id = "
         "(SELECT id FROM item_variants WHERE item_id = ?)",
