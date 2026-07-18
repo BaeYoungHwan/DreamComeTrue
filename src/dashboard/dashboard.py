@@ -39,3 +39,30 @@ def item_sales_ranking(conn: sqlite3.Connection, year_month: str) -> list[dict]:
         (year_month,),
     ).fetchall()
     return [{"item_name": r[0], "total_amount": r[1]} for r in rows]
+
+
+def item_variant_matrix(conn: sqlite3.Connection, year_month: str) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT items.name, item_variants.size, item_variants.weight,
+               SUM(sales.quantity) AS total_quantity,
+               SUM(sales.total_amount) AS total_amount
+        FROM sales
+        JOIN items ON items.id = sales.item_id
+        LEFT JOIN item_variants ON item_variants.id = sales.variant_id
+        WHERE strftime('%Y-%m', sales.sold_at) = ?
+        GROUP BY items.name, item_variants.size, item_variants.weight
+        ORDER BY items.name, item_variants.size, item_variants.weight
+        """,
+        (year_month,),
+    ).fetchall()
+    return [
+        {
+            "item_name": r[0],
+            "size": r[1],
+            "weight": r[2],
+            "total_quantity": r[3],
+            "total_amount": r[4],
+        }
+        for r in rows
+    ]

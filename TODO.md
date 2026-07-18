@@ -36,6 +36,49 @@
 
 ---
 
+## P1.1 — 실사용 시뮬레이션 피드백 수정
+
+> 부모님 실사용 시뮬레이션에서 발견된 5건. 상세 원인·수정 내역은 `docs/exec-plans/completed/p1.1-simulation-fixes.md` 참조.
+
+- [x] 대시보드·정산 리포트 표 헤더 영어 → 한글 (`품목`/`수량`/`출하량`/`판매대금`), 커스텀 속성 dict 표시 → 목록형
+- [x] 거래·판매 기록이 있는 품목 삭제 시 크래시 → 차단 + 안내 메시지 (`ItemInUseError`)
+- [x] 입출고·판매 탭에 날짜 입력란 추가 (`occurred_on`/`sold_on` 파라미터)
+- [x] 정산 리포트 탭 — 엑셀 다운로드 클릭 시 표·금액이 사라지는 버그 → `st.session_state` 리팩터링 (전체 데이터 백업 버튼도 동일 버그 함께 수정)
+- [x] 품목 커스텀 속성 안내문구·placeholder 추가
+- [x] 입출고·판매 개별 내역 조회·삭제 기능 추가 (기록이 있어 삭제 차단된 품목도 내역 삭제 후 품목 삭제 가능) — `list_transactions`/`delete_transaction`, `list_sales`/`delete_sale`
+
+---
+
+## P1.2 — 채널·수수료 정산 (PRD-v2 7-A)
+
+> 수기 장부(로컬푸드 위탁판매 정산) 분석 기반 확장. 상세 내역은 `docs/exec-plans/completed/phase2-channel-settlement.md`, 기획은 `docs/product-specs/PRD-v2.md` 참조.
+
+- [x] 스키마 마이그레이션 인프라 신설 (`PRAGMA user_version` 기반, `src/core/migrations.py`)
+- [x] 채널(출하처) 마스터 CRUD + 기존 `sales.buyer` 자동 매핑 백필 — `src/settlement/channels.py`
+- [x] 판매 기록에 채널 연결 (`sales.channel_id`) — `src/sales/sales.py`
+- [x] 채널별 정산 계산(판매누계·수수료·예상입금액) + 실입금액 대사(차액 경고) — `src/settlement/settlement.py`
+- [x] 채널 정산 엑셀 Export — `src/export/report.py`
+- [x] `app.py`에 "채널 관리" 탭 신설, 판매 탭 채널 선택 UI, 정산 리포트 탭 채널별 정산 섹션 추가
+- [x] 브라우저 실증: 사진1 실제 장부 값(판매누계 293,400원 → 수수료 29,340원 → 예상입금액 264,060원 vs 실입금 260,800원)으로 입금 오류 경고 재현 확인
+
+---
+
+## P1.3 — 품목 변형(크기×무게)·가격 마스터 + 선입금 주문출하 (PRD-v2 7-C, 7-D)
+
+> 상세 내역은 `docs/exec-plans/active/phase3-4-variants-orders.md`, 기획은 `docs/product-specs/PRD-v2.md` 참조.
+
+- [x] `item_variants`(품목 변형+가격 마스터), `orders`(선입금 주문) 테이블 + 마이그레이션(002/003) — `src/core/db.py`, `src/core/migrations.py`
+- [x] 품목 변형 CRUD (크기×무게, 기준 단가) — `src/inventory/variants.py`
+- [x] 입출고·판매에 변형별 재고 추적 (`current_stock`/`record_transaction`/`record_sale`에 `variant_id`)
+- [x] 판매 탭에서 변형 선택 시 기준 단가 자동 입력 (직접 수정 가능)
+- [x] 선입금 주문 관리(고객명·변형·수량·입금확인일 → 출고대기 → 출고완료) — `src/orders/orders.py`
+- [x] 대시보드 품목×변형 매트릭스 — `src/dashboard/dashboard.py`
+- [x] `app.py`에 "선입금 주문" 탭 신설, 품목 관리 탭에 변형·가격 관리 UI
+- [x] pytest 88개 전체 통과 (AppTest 골든패스: 품목→변형/가격 등록→입고→주문접수→출고처리)
+- [ ] 브라우저(chrome-devtools) 실증 — 다른 세션의 브라우저 프로필 점유로 보류, 여유 시 재시도
+
+---
+
 ## P2 — 검증 및 배포
 
 - [ ] E2E 테스트 작성 (완료 기준 시나리오: 품목등록 → 입고 → 출고 → 폐기 → 정산 → 대시보드, 1회 정상 동작 확인)

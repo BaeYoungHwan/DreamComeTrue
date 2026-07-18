@@ -1,11 +1,15 @@
 from src.core.db import get_connection, init_db
 from src.inventory.items import (
+    ItemInUseError,
     create_item,
     delete_item,
     get_item,
     list_items,
     update_custom_attributes,
 )
+from src.inventory.stock import record_transaction
+
+import pytest
 
 
 def _conn(tmp_path):
@@ -79,3 +83,17 @@ def test_get_item_returns_none_for_missing_id(tmp_path):
     conn.close()
 
     assert item is None
+
+
+def test_delete_item_raises_when_transactions_exist(tmp_path):
+    conn = _conn(tmp_path)
+    item_id = create_item(conn, "상추", "kg")
+    record_transaction(conn, item_id, "harvest", 10)
+
+    with pytest.raises(ItemInUseError):
+        delete_item(conn, item_id)
+
+    item = get_item(conn, item_id)
+    conn.close()
+
+    assert item is not None

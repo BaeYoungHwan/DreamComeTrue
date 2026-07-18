@@ -7,8 +7,11 @@ from src.export.report import (
     export_all_data_to_excel_bytes,
     period_report,
     report_to_excel_bytes,
+    settlement_to_excel_bytes,
 )
 from src.inventory.items import create_item
+from src.core.migrations import run_migrations
+from src.settlement.channels import create_channel
 
 
 def _seed_sale(conn, item_id, buyer, quantity, unit_price, sold_at):
@@ -51,13 +54,62 @@ def test_report_to_excel_bytes_contains_expected_rows():
     assert [cell.value for cell in ws[2]] == ["상추", 5, 11000]
 
 
-def test_export_all_data_to_excel_bytes_creates_three_sheets(tmp_path):
+def test_export_all_data_to_excel_bytes_creates_four_sheets(tmp_path):
     conn = get_connection(str(tmp_path / "farm.db"))
     init_db(conn)
+    run_migrations(conn)
     create_item(conn, "상추", "kg")
 
     data = export_all_data_to_excel_bytes(conn)
     conn.close()
     wb = load_workbook(io.BytesIO(data))
 
-    assert set(wb.sheetnames) == {"품목", "입출고내역", "판매내역"}
+    assert set(wb.sheetnames) == {"품목", "입출고내역", "판매내역", "채널"}
+
+
+def test_export_all_data_includes_channel_sheet_rows(tmp_path):
+    conn = get_connection(str(tmp_path / "farm.db"))
+    init_db(conn)
+    run_migrations(conn)
+    create_channel(conn, "모현점", "consignment", 10)
+
+    data = export_all_data_to_excel_bytes(conn)
+    conn.close()
+    wb = load_workbook(io.BytesIO(data))
+    ws = wb["채널"]
+
+    assert [cell.value for cell in ws[1]] == ["id", "채널명", "유형", "수수료율", "등록일"]
+    assert ws[2][1].value == "모현점"
+
+
+def test_settlement_to_excel_bytes_contains_expected_row():
+    result = {
+        "channel_name": "모현점",
+        "period_start": "2026-06-01",
+        "period_end": "2026-06-30",
+        "sales_total": 293400,
+        "commission_rate": 10,
+        "commission_amount": 29340,
+        "expected_deposit": 264060,
+        "actual_deposit": 260800,
+        "diff": -3260,
+    }
+
+    data = settlement_to_excel_bytes(result)
+    wb = load_workbook(io.BytesIO(data))
+    ws = wb.active
+
+    assert ws["A1"].value == "채널"
+    header = [cell.value for cell in ws[1]]
+    row = [cell.value for cell in ws[2]]
+    assert header == ["채널", "기간", "판매누계", "수수료율(%)", "수수료", "예상입금액", "실입금액", "차액"]
+    assert row == [
+        "모현점",
+        "2026-06-01 ~ 2026-06-30",
+        293400,
+        10,
+        29340,
+        264060,
+        260800,
+        -3260,
+    ]

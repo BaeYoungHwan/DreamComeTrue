@@ -41,6 +41,31 @@ def report_to_excel_bytes(rows: list[dict[str, Any]]) -> bytes:
     return buf.getvalue()
 
 
+def settlement_to_excel_bytes(result: dict[str, Any]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "채널정산"
+    ws.append(
+        ["채널", "기간", "판매누계", "수수료율(%)", "수수료", "예상입금액", "실입금액", "차액"]
+    )
+    ws.append(
+        [
+            result.get("channel_name"),
+            f"{result.get('period_start')} ~ {result.get('period_end')}",
+            result.get("sales_total"),
+            result.get("commission_rate"),
+            result.get("commission_amount"),
+            result.get("expected_deposit"),
+            result.get("actual_deposit"),
+            result.get("diff"),
+        ]
+    )
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def export_all_data_to_excel_bytes(conn: sqlite3.Connection) -> bytes:
     wb = Workbook()
 
@@ -60,11 +85,20 @@ def export_all_data_to_excel_bytes(conn: sqlite3.Connection) -> bytes:
         ws_tx.append(list(row))
 
     ws_sales = wb.create_sheet("판매내역")
-    ws_sales.append(["id", "품목ID", "출하처", "수량", "단가", "판매대금", "판매일시"])
+    ws_sales.append(
+        ["id", "품목ID", "채널ID", "출하처", "수량", "단가", "판매대금", "판매일시"]
+    )
     for row in conn.execute(
-        "SELECT id, item_id, buyer, quantity, unit_price, total_amount, sold_at FROM sales"
+        "SELECT id, item_id, channel_id, buyer, quantity, unit_price, total_amount, sold_at FROM sales"
     ):
         ws_sales.append(list(row))
+
+    ws_channels = wb.create_sheet("채널")
+    ws_channels.append(["id", "채널명", "유형", "수수료율", "등록일"])
+    for row in conn.execute(
+        "SELECT id, name, channel_type, commission_rate, created_at FROM channels"
+    ):
+        ws_channels.append(list(row))
 
     buf = io.BytesIO()
     wb.save(buf)
