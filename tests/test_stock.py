@@ -8,6 +8,7 @@ from src.inventory.stock import (
     delete_transaction,
     list_transactions,
     record_transaction,
+    stock_overview,
 )
 
 
@@ -146,6 +147,39 @@ def test_current_stock_tracks_variants_independently(tmp_path):
     assert stock_a == 6
     assert stock_b == 5
     assert stock_total == 11
+
+
+def test_stock_overview_returns_one_row_per_item_without_variants(tmp_path):
+    conn, item_id = _conn_with_item(tmp_path, name="상추", unit="kg")
+    record_transaction(conn, item_id, "harvest", 10)
+
+    overview = stock_overview(conn)
+    conn.close()
+
+    assert overview == [
+        {"item_name": "상추", "unit": "kg", "size": None, "weight": None, "stock": 10}
+    ]
+
+
+def test_stock_overview_returns_one_row_per_variant_when_variants_exist(tmp_path):
+    from src.core.migrations import run_migrations
+    from src.inventory.variants import create_variant
+
+    conn, item_id = _conn_with_item(tmp_path, name="블루베리", unit="500g")
+    run_migrations(conn)
+    variant_a = create_variant(conn, item_id, size="특", weight="500g")
+    variant_b = create_variant(conn, item_id, size="대", weight="500g")
+
+    record_transaction(conn, item_id, "harvest", 10, variant_id=variant_a)
+    record_transaction(conn, item_id, "harvest", 5, variant_id=variant_b)
+
+    overview = stock_overview(conn)
+    conn.close()
+
+    assert overview == [
+        {"item_name": "블루베리", "unit": "500g", "size": "대", "weight": "500g", "stock": 5},
+        {"item_name": "블루베리", "unit": "500g", "size": "특", "weight": "500g", "stock": 10},
+    ]
 
 
 def test_shipment_rejects_when_variant_stock_insufficient(tmp_path):

@@ -28,6 +28,36 @@ def period_report(
     ]
 
 
+def detailed_period_report(
+    conn: sqlite3.Connection, start_date: str, end_date: str
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT sales.sold_at, items.name, item_variants.size, item_variants.weight,
+               sales.buyer, sales.quantity, sales.unit_price, sales.total_amount
+        FROM sales
+        JOIN items ON items.id = sales.item_id
+        LEFT JOIN item_variants ON item_variants.id = sales.variant_id
+        WHERE date(sales.sold_at) BETWEEN date(?) AND date(?)
+        ORDER BY sales.sold_at, sales.id
+        """,
+        (start_date, end_date),
+    ).fetchall()
+    return [
+        {
+            "sold_at": r[0],
+            "item_name": r[1],
+            "size": r[2],
+            "weight": r[3],
+            "buyer": r[4],
+            "quantity": r[5],
+            "unit_price": r[6],
+            "total_amount": r[7],
+        }
+        for r in rows
+    ]
+
+
 def report_to_excel_bytes(rows: list[dict[str, Any]]) -> bytes:
     wb = Workbook()
     ws = wb.active
@@ -35,6 +65,30 @@ def report_to_excel_bytes(rows: list[dict[str, Any]]) -> bytes:
     ws.append(["품목", "출하량", "판매대금"])
     for row in rows:
         ws.append([row["item_name"], row["total_quantity"], row["total_amount"]])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def detailed_report_to_excel_bytes(rows: list[dict[str, Any]]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "상세리포트"
+    ws.append(["날짜", "품목", "크기", "무게", "출하처", "수량", "단가", "금액"])
+    for row in rows:
+        ws.append(
+            [
+                row["sold_at"],
+                row["item_name"],
+                row["size"],
+                row["weight"],
+                row["buyer"],
+                row["quantity"],
+                row["unit_price"],
+                row["total_amount"],
+            ]
+        )
 
     buf = io.BytesIO()
     wb.save(buf)

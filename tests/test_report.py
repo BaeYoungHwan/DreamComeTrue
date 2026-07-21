@@ -5,24 +5,27 @@ from openpyxl import load_workbook
 from src.core.db import get_connection, init_db
 from src.export.report import (
     all_channels_settlement_to_excel_bytes,
+    detailed_period_report,
+    detailed_report_to_excel_bytes,
     export_all_data_to_excel_bytes,
     period_report,
     report_to_excel_bytes,
     settlement_to_excel_bytes,
 )
 from src.inventory.items import create_item
+from src.inventory.variants import create_variant
 from src.core.migrations import run_migrations
 from src.settlement.channels import create_channel
 
 
-def _seed_sale(conn, item_id, buyer, quantity, unit_price, sold_at):
+def _seed_sale(conn, item_id, buyer, quantity, unit_price, sold_at, channel_id=None, variant_id=None):
     total = quantity * unit_price
     conn.execute(
         """
-        INSERT INTO sales (item_id, buyer, quantity, unit_price, total_amount, sold_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO sales (item_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount, sold_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (item_id, buyer, quantity, unit_price, total, sold_at),
+        (item_id, channel_id, variant_id, buyer, quantity, unit_price, total, sold_at),
     )
     conn.commit()
 
@@ -41,6 +44,73 @@ def test_period_report_aggregates_within_date_range(tmp_path):
 
     assert report == [
         {"item_name": "상추", "total_quantity": 5, "total_amount": 11000}
+    ]
+
+
+def test_detailed_period_report_returns_individual_sale_rows_within_range(tmp_path):
+    conn = get_connection(str(tmp_path / "farm.db"))
+    init_db(conn)
+    item_id = create_item(conn, "블루베리", "500g")
+    variant_id = create_variant(conn, item_id, "특", "500g", 15000)
+    channel_id = create_channel(conn, "모현점", "consignment", 10)
+
+    _seed_sale(
+        conn, item_id, "모현점", 3, 15000, "2026-07-10 09:00:00",
+        channel_id=channel_id, variant_id=variant_id,
+    )
+    _seed_sale(conn, item_id, "직거래", 2, 2500, "2026-07-15 09:00:00")
+    _seed_sale(conn, item_id, "직거래", 1, 2500, "2026-08-01 09:00:00")  # 기간 밖
+
+    rows = detailed_period_report(conn, "2026-07-01", "2026-07-31")
+    conn.close()
+
+    assert rows == [
+        {
+            "sold_at": "2026-07-10 09:00:00",
+            "item_name": "블루베리",
+            "size": "특",
+            "weight": "500g",
+            "buyer": "모현점",
+            "quantity": 3,
+            "unit_price": 15000,
+            "total_amount": 45000,
+        },
+        {
+            "sold_at": "2026-07-15 09:00:00",
+            "item_name": "블루베리",
+            "size": None,
+            "weight": None,
+            "buyer": "직거래",
+            "quantity": 2,
+            "unit_price": 2500,
+            "total_amount": 5000,
+        },
+    ]
+
+
+def test_detailed_report_to_excel_bytes_contains_expected_rows():
+    rows = [
+        {
+            "sold_at": "2026-07-10 09:00:00",
+            "item_name": "블루베리",
+            "size": "특",
+            "weight": "500g",
+            "buyer": "모현점",
+            "quantity": 3,
+            "unit_price": 15000,
+            "total_amount": 45000,
+        }
+    ]
+
+    data = detailed_report_to_excel_bytes(rows)
+    wb = load_workbook(io.BytesIO(data))
+    ws = wb.active
+
+    assert [cell.value for cell in ws[1]] == [
+        "날짜", "품목", "크기", "무게", "출하처", "수량", "단가", "금액"
+    ]
+    assert [cell.value for cell in ws[2]] == [
+        "2026-07-10 09:00:00", "블루베리", "특", "500g", "모현점", 3, 15000, 45000
     ]
 
 

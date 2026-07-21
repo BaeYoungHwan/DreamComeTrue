@@ -80,6 +80,19 @@
 
 ---
 
+## P1.4 — QA 피드백 반영 (`시뮬레이션 피드백.txt`)
+
+> 실사용 QA(사진 속 로컬푸드 정산 장부를 데모 데이터로 재현해 직접 앱 실행) 중 발견된 5건. 계획은 `.claude/plans/fluttering-growing-heron.md` 참조.
+
+- [x] 재고 단위 표시 공백 버그 수정 (`app.py` 변형재고/입출고내역/판매내역 3곳, 예: "3.96500g" → "3.96 500g")
+- [x] 정산 리포트에 "상세 리포트" 추가 — 품목별 합산 외에 날짜별 개별 판매 건 조회 + 엑셀 다운로드 (`detailed_period_report`, `detailed_report_to_excel_bytes` — `src/export/report.py`)
+- [x] 가격 입력 소수점 제거 — 변형 기준단가/판매 단가/실제 통장입금액 `number_input`을 정수 전용(`format="%d"`)으로 변경
+- [x] 커스텀 속성(당도·재배방식 등 자유 메모) UI 제거 — 실사용에서 용도 불명확. DB 컬럼·백엔드 함수는 유지(스키마 변경 없음, 추후 필요시 UI만 재부착 가능)
+- [x] "재고 현황" 탭 신설 (첫 번째 탭) — 전체 품목×변형의 현재 재고를 한 화면에서 조회 (`stock_overview` — `src/inventory/stock.py`)
+- [x] pytest 99개 전체 통과 (신규 8개: 상세 리포트 2, 재고 현황 2, 앱 골든패스 2, 탭 개수 갱신 1, 커스텀 속성 테스트 제거 1)
+
+---
+
 ## P2 — 검증 및 배포
 
 - [x] E2E 테스트 작성 (완료 기준 시나리오: 품목등록 → 입고 → 출고 → 폐기 → 판매 → 정산 리포트 → 대시보드, 1회 정상 동작 확인) — `test_v1_core_golden_path_register_stock_sale_report_dashboard`

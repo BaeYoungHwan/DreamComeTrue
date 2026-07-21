@@ -2,7 +2,8 @@
 import sqlite3
 from datetime import datetime
 
-from src.inventory.items import get_item
+from src.inventory.items import get_item, list_items
+from src.inventory.variants import list_variants
 
 VALID_TYPES = ("harvest", "shipment", "loss")
 
@@ -93,3 +94,33 @@ def list_transactions(conn: sqlite3.Connection, item_id: int) -> list[dict]:
 def delete_transaction(conn: sqlite3.Connection, tx_id: int) -> None:
     conn.execute("DELETE FROM stock_transactions WHERE id = ?", (tx_id,))
     conn.commit()
+
+
+def stock_overview(conn: sqlite3.Connection) -> list[dict]:
+    """모든 품목의 현재 재고를 한눈에 볼 수 있는 목록.
+    변형이 있는 품목은 변형별로, 없는 품목은 품목 전체로 한 행씩 반환한다."""
+    rows = []
+    for item in list_items(conn):
+        variants = list_variants(conn, item["id"])
+        if variants:
+            for v in variants:
+                rows.append(
+                    {
+                        "item_name": item["name"],
+                        "unit": item["unit"],
+                        "size": v["size"],
+                        "weight": v["weight"],
+                        "stock": current_stock(conn, item["id"], variant_id=v["id"]),
+                    }
+                )
+        else:
+            rows.append(
+                {
+                    "item_name": item["name"],
+                    "unit": item["unit"],
+                    "size": None,
+                    "weight": None,
+                    "stock": current_stock(conn, item["id"]),
+                }
+            )
+    return rows

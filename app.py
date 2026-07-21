@@ -15,6 +15,8 @@ from src.dashboard.dashboard import (
 )
 from src.export.report import (
     all_channels_settlement_to_excel_bytes,
+    detailed_period_report,
+    detailed_report_to_excel_bytes,
     export_all_data_to_excel_bytes,
     period_report,
     report_to_excel_bytes,
@@ -26,7 +28,6 @@ from src.inventory.items import (
     delete_item,
     get_item,
     list_items,
-    update_custom_attributes,
 )
 from src.inventory.stock import (
     InsufficientStockError,
@@ -34,6 +35,7 @@ from src.inventory.stock import (
     delete_transaction,
     list_transactions,
     record_transaction,
+    stock_overview,
 )
 from src.inventory.variants import (
     VariantInUseError,
@@ -84,9 +86,36 @@ def _get_conn(db_path: str):
 
 conn = _get_conn(os.environ.get("FARM_DB_PATH", DEFAULT_DB_PATH))
 
-tab_items, tab_stock, tab_sales, tab_orders, tab_channels, tab_dashboard, tab_report = st.tabs(
-    ["품목 관리", "입출고", "판매", "선입금 주문", "채널 관리", "대시보드", "정산 리포트"]
+(
+    tab_overview,
+    tab_items,
+    tab_stock,
+    tab_sales,
+    tab_orders,
+    tab_channels,
+    tab_dashboard,
+    tab_report,
+) = st.tabs(
+    ["재고 현황", "품목 관리", "입출고", "판매", "선입금 주문", "채널 관리", "대시보드", "정산 리포트"]
 )
+
+with tab_overview:
+    st.subheader("현재 재고 현황")
+    overview_rows = stock_overview(conn)
+    if not overview_rows:
+        st.info("먼저 '품목 관리' 탭에서 품목을 등록해주세요.")
+    else:
+        st.table(
+            [
+                {
+                    "품목": r["item_name"],
+                    "크기": r["size"] or "-",
+                    "무게": r["weight"] or "-",
+                    "재고": f"{r['stock']:,.1f} {r['unit']}",
+                }
+                for r in overview_rows
+            ]
+        )
 
 CHANNEL_TYPE_LABELS = {"consignment": "위탁판매", "direct": "직거래"}
 
@@ -108,34 +137,6 @@ with tab_items:
     st.subheader("품목 목록")
     for item in list_items(conn):
         with st.expander(f"{item['name']} ({item['unit']})"):
-            st.caption(
-                "품목마다 다르게 기록하고 싶은 추가 정보를 자유롭게 적어두는 "
-                "메모입니다 (예: 당도, 재배방식, 포장단위). 입력하지 않아도 됩니다."
-            )
-            if item["custom_attributes"]:
-                for attr_key, attr_value in item["custom_attributes"].items():
-                    st.write(f"- {attr_key}: {attr_value}")
-            else:
-                st.caption("등록된 속성이 없습니다.")
-
-            col1, col2 = st.columns(2)
-            new_key = col1.text_input(
-                "속성명 추가", placeholder="예: 당도", key=f"key_{item['id']}"
-            )
-            new_value = col2.text_input(
-                "속성값", placeholder="예: 10 브릭스", key=f"value_{item['id']}"
-            )
-            if st.button("속성 추가", key=f"add_attr_{item['id']}") and new_key:
-                attrs = {**item["custom_attributes"], new_key: new_value}
-                update_custom_attributes(conn, item["id"], attrs)
-                st.rerun()
-
-            for key in list(item["custom_attributes"].keys()):
-                if st.button(f"'{key}' 속성 삭제", key=f"del_attr_{item['id']}_{key}"):
-                    attrs = {k: v for k, v in item["custom_attributes"].items() if k != key}
-                    update_custom_attributes(conn, item["id"], attrs)
-                    st.rerun()
-
             st.write("**변형(크기×무게) 및 가격 마스터**")
             st.caption(
                 "블루베리처럼 크기(특/대/중)와 무게(1kg/500g 등 포장단위)로 나눠 파는 "
@@ -151,7 +152,7 @@ with tab_items:
                 v_stock = current_stock(conn, item["id"], variant_id=v["id"])
                 v_col1.write(
                     f"{v['size'] or '-'} / {v['weight'] or '-'} · 기준단가 {price_label} "
-                    f"· 재고 {v_stock}{item['unit']}"
+                    f"· 재고 {v_stock} {item['unit']}"
                 )
                 if v_col2.button("삭제", key=f"del_variant_{v['id']}"):
                     try:
@@ -169,7 +170,7 @@ with tab_items:
                     "무게(포장단위)", placeholder="예: 1kg", key=f"variant_weight_{item['id']}"
                 )
                 new_price = vc3.number_input(
-                    "기준 단가", min_value=0.0, step=100.0, key=f"variant_price_{item['id']}"
+                    "기준 단가", min_value=0, step=100, format="%d", key=f"variant_price_{item['id']}"
                 )
                 if st.form_submit_button("변형 추가"):
                     create_variant(
@@ -187,7 +188,7 @@ with tab_items:
                 for tx in transactions:
                     tx_col1, tx_col2 = st.columns([4, 1])
                     tx_col1.write(
-                        f"{TX_TYPE_LABELS[tx['type']]} · {tx['quantity']}{item['unit']} · {tx['created_at']}"
+                        f"{TX_TYPE_LABELS[tx['type']]} · {tx['quantity']} {item['unit']} · {tx['created_at']}"
                     )
                     if tx_col2.button("삭제", key=f"del_tx_{tx['id']}"):
                         delete_transaction(conn, tx["id"])
@@ -199,7 +200,7 @@ with tab_items:
                 for s in sales_history:
                     s_col1, s_col2 = st.columns([4, 1])
                     s_col1.write(
-                        f"{s['sold_at']} · {s['buyer']} · {s['quantity']}{item['unit']} · "
+                        f"{s['sold_at']} · {s['buyer']} · {s['quantity']} {item['unit']} · "
                         f"{s['unit_price']:,.0f}원 · 합계 {s['total_amount']:,.0f}원"
                     )
                     if s_col2.button("삭제", key=f"del_sale_{s['id']}"):
@@ -284,7 +285,7 @@ with tab_sales:
             if variant_id:
                 variant = get_variant(conn, variant_id)
                 if variant["default_price"] is not None:
-                    st.session_state["sales_price"] = float(variant["default_price"])
+                    st.session_state["sales_price"] = int(variant["default_price"])
 
         selected_variant_label = st.selectbox(
             "변형(해당 시 선택 — 기준 단가가 자동으로 채워집니다)",
@@ -299,7 +300,7 @@ with tab_sales:
                 "직접 입력 출하처 (채널을 선택하지 않은 경우에만 사용)", key="sales_buyer_manual"
             )
             quantity = st.number_input("판매 수량", min_value=0.0, step=0.1, key="sales_qty")
-            unit_price = st.number_input("단가", min_value=0.0, step=100.0, key="sales_price")
+            unit_price = st.number_input("단가", min_value=0, step=100, format="%d", key="sales_price")
             sale_date = st.date_input("판매 일자", value=date.today(), key="sales_date")
             if st.form_submit_button("판매 등록"):
                 if selected_channel == NO_CHANNEL:
@@ -542,6 +543,35 @@ with tab_report:
                 data=report_to_excel_bytes(rows),
                 file_name=f"정산리포트_{range_start}_{range_end}.xlsx",
             )
+
+            if st.button("상세 리포트 보기", key="detail_report_btn"):
+                st.session_state["detail_rows"] = detailed_period_report(
+                    conn, range_start.isoformat(), range_end.isoformat()
+                )
+
+            if "detail_rows" in st.session_state:
+                detail_rows = st.session_state["detail_rows"]
+                st.table(
+                    [
+                        {
+                            "날짜": r["sold_at"],
+                            "품목": r["item_name"],
+                            "크기": r["size"] or "-",
+                            "무게": r["weight"] or "-",
+                            "출하처": r["buyer"],
+                            "수량": r["quantity"],
+                            "단가": r["unit_price"],
+                            "금액": r["total_amount"],
+                        }
+                        for r in detail_rows
+                    ]
+                )
+                st.download_button(
+                    "상세 리포트 엑셀 다운로드",
+                    data=detailed_report_to_excel_bytes(detail_rows),
+                    file_name=f"상세리포트_{range_start}_{range_end}.xlsx",
+                    key="detail_report_download",
+                )
         else:
             st.info("해당 기간에 판매 기록이 없습니다.")
 
@@ -615,7 +645,7 @@ with tab_report:
             st.write(f"예상입금액: {result['expected_deposit']:,.0f}원")
 
             actual_deposit = st.number_input(
-                "실제 통장입금액", min_value=0.0, step=100.0, key="settlement_actual"
+                "실제 통장입금액", min_value=0, step=100, format="%d", key="settlement_actual"
             )
             if st.button("입금 대조", key="settlement_check"):
                 discrepancy = deposit_discrepancy(result["expected_deposit"], actual_deposit)

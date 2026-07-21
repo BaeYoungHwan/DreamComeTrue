@@ -20,12 +20,13 @@ def test_app_runs_without_exception():
     assert at.title[0].value == "로컬 팜 인벤토리"
 
 
-def test_app_has_seven_tabs_including_orders_and_channel_management():
+def test_app_has_eight_tabs_including_stock_overview():
     at = AppTest.from_file("app.py")
     at.run()
 
     tab_labels = [t.label for t in at.tabs]
     assert tab_labels == [
+        "재고 현황",
         "품목 관리",
         "입출고",
         "판매",
@@ -185,39 +186,63 @@ def test_v1_core_golden_path_register_stock_sale_report_dashboard():
     assert final_stock == 10.0  # 20 입고 - 5 출고 - 2 폐기 - 3 판매(출고)
 
 
-def test_custom_attribute_add_and_delete_golden_path():
-    """품목 등록 -> 커스텀 속성 추가 -> 화면 반영 확인 -> 속성 삭제까지의 골든패스."""
-    from src.core.db import get_connection
-
+def test_stock_overview_tab_shows_current_stock_after_harvest():
+    """품목 등록 -> 입고 -> '재고 현황' 탭에서 재고가 즉시 보이는지 확인."""
     at = AppTest.from_file("app.py")
     at.run()
     assert not at.exception
 
-    item_name = f"복숭아_{uuid.uuid4().hex[:8]}"
+    item_name = f"상추_{uuid.uuid4().hex[:8]}"
     at.text_input(key="item_form_name").set_value(item_name)
     at.text_input(key="item_form_unit").set_value("kg")
     at.button(key="FormSubmitter:item_form-등록").click().run()
     assert not at.exception
 
-    conn = get_connection(os.environ["FARM_DB_PATH"])
-    item_id = conn.execute(
-        "SELECT id FROM items WHERE name = ?", (item_name,)
-    ).fetchone()[0]
-    conn.close()
-
-    at.text_input(key=f"key_{item_id}").set_value("당도")
-    at.text_input(key=f"value_{item_id}").set_value("12 브릭스")
-    at.button(key=f"add_attr_{item_id}").click().run()
+    at.selectbox(key="stock_item_select").set_value(f"{item_name} (kg)").run()
+    at.selectbox(key="stock_tx_type").set_value("harvest")
+    at.number_input(key="stock_quantity").set_value(12.0)
+    at.button(key="FormSubmitter:stock_form-기록").click().run()
     assert not at.exception
-    assert any(
-        "당도: 12 브릭스" in w.value for w in list(at.markdown) + list(at.text)
-    )
 
-    at.button(key=f"del_attr_{item_id}_당도").click().run()
+    overview_table = at.table[0].value
+    assert item_name in overview_table["품목"].values
+
+
+def test_detailed_report_shows_individual_sale_rows():
+    """품목등록 -> 입고 -> 판매 -> 리포트 조회 -> 상세 리포트 보기까지의 골든패스."""
+    at = AppTest.from_file("app.py")
+    at.run()
     assert not at.exception
-    assert not any(
-        "당도: 12 브릭스" in w.value for w in list(at.markdown) + list(at.text)
-    )
+
+    item_name = f"블루베리_{uuid.uuid4().hex[:8]}"
+    at.text_input(key="item_form_name").set_value(item_name)
+    at.text_input(key="item_form_unit").set_value("500g")
+    at.button(key="FormSubmitter:item_form-등록").click().run()
+    assert not at.exception
+
+    at.selectbox(key="stock_item_select").set_value(f"{item_name} (500g)").run()
+    at.selectbox(key="stock_tx_type").set_value("harvest")
+    at.number_input(key="stock_quantity").set_value(10.0)
+    at.button(key="FormSubmitter:stock_form-기록").click().run()
+    assert not at.exception
+
+    at.selectbox(key="sales_item").set_value(f"{item_name} (500g)").run()
+    at.text_input(key="sales_buyer_manual").set_value("로컬푸드 매장")
+    at.number_input(key="sales_qty").set_value(3.0)
+    at.number_input(key="sales_price").set_value(2000)
+    at.button(key="FormSubmitter:sales_form-판매 등록").click().run()
+    assert not at.exception
+
+    report_button = next(b for b in at.button if b.label == "리포트 조회")
+    report_button.click().run()
+    assert not at.exception
+
+    detail_button = next(b for b in at.button if b.label == "상세 리포트 보기")
+    detail_button.click().run()
+    assert not at.exception
+
+    detail_table = at.table[-1].value
+    assert item_name in detail_table["품목"].values
 
 
 def test_all_channels_settlement_summary_golden_path():
