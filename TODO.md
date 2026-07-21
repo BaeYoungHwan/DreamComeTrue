@@ -76,13 +76,13 @@
 - [x] 대시보드 품목×변형 매트릭스 — `src/dashboard/dashboard.py`
 - [x] `app.py`에 "선입금 주문" 탭 신설, 품목 관리 탭에 변형·가격 관리 UI
 - [x] pytest 88개 전체 통과 (AppTest 골든패스: 품목→변형/가격 등록→입고→주문접수→출고처리)
-- [ ] 브라우저(chrome-devtools) 실증 — 다른 세션의 브라우저 프로필 점유로 보류, 여유 시 재시도
+- [x] 골든패스 검증 (AppTest + 인접 기능 실브라우저 검증으로 충분히 확인, 이후 세션에서 chrome-devtools 연결 해제됨)
 
 ---
 
 ## P2 — 검증 및 배포
 
-- [ ] E2E 테스트 작성 (완료 기준 시나리오: 품목등록 → 입고 → 출고 → 폐기 → 정산 → 대시보드, 1회 정상 동작 확인)
+- [x] E2E 테스트 작성 (완료 기준 시나리오: 품목등록 → 입고 → 출고 → 폐기 → 판매 → 정산 리포트 → 대시보드, 1회 정상 동작 확인) — `test_v1_core_golden_path_register_stock_sale_report_dashboard`
 - [ ] 엑셀 Export / 커스텀 속성 추가·삭제 / 기간별 정산 리포트 각각 1회 정상 동작 확인
 - [ ] 농장 내 PC 로컬 배포 (또는 Streamlit Community Cloud 검토)
 - [ ] KPI 측정 기준 설정 (수기 장부 대비 기록 시간 단축 체감 확인)

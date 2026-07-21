@@ -1,3 +1,4 @@
+import os
 import uuid
 
 import pytest
@@ -123,6 +124,65 @@ def test_variant_price_and_order_golden_path():
     ).fetchone()[0]
     conn.close()
     assert status == "출고완료"
+
+
+def test_v1_core_golden_path_register_stock_sale_report_dashboard():
+    """PRD-v1 완료 기준: 품목등록 → 입고 → 출고 → 폐기 → 판매 → 정산 리포트 → 대시보드 확인,
+    1회 정상 동작."""
+    at = AppTest.from_file("app.py")
+    at.run()
+    assert not at.exception
+
+    item_name = f"상추_{uuid.uuid4().hex[:8]}"
+    at.text_input(key="item_form_name").set_value(item_name)
+    at.text_input(key="item_form_unit").set_value("kg")
+    at.button(key="FormSubmitter:item_form-등록").click().run()
+    assert not at.exception
+
+    def _record_stock(tx_type: str, quantity: float):
+        at.selectbox(key="stock_item_select").set_value(f"{item_name} (kg)").run()
+        at.selectbox(key="stock_tx_type").set_value(tx_type)
+        at.number_input(key="stock_quantity").set_value(quantity)
+        at.button(key="FormSubmitter:stock_form-기록").click().run()
+        assert not at.exception
+
+    _record_stock("harvest", 20.0)  # 입고
+    _record_stock("shipment", 5.0)  # 출고
+    _record_stock("loss", 2.0)  # 폐기
+
+    stock_line = "".join(w.value for w in list(at.markdown) + list(at.text))
+    assert f"{item_name}: 13.0 kg" in stock_line
+
+    at.selectbox(key="sales_item").set_value(f"{item_name} (kg)").run()
+    at.text_input(key="sales_buyer_manual").set_value("로컬푸드 매장")
+    at.number_input(key="sales_qty").set_value(3.0)
+    at.number_input(key="sales_price").set_value(2000.0)
+    at.button(key="FormSubmitter:sales_form-판매 등록").click().run()
+    assert not at.exception
+    assert any("판매가 등록되었습니다" in s.value for s in at.success)
+
+    report_button = next(b for b in at.button if b.label == "리포트 조회")
+    report_button.click().run()
+    assert not at.exception
+    assert any(item_name in str(t.value.values) for t in at.table)
+
+    assert any("6,000원" == m.value for m in at.metric)
+
+    from src.core.db import get_connection
+
+    conn = get_connection(os.environ["FARM_DB_PATH"])
+    final_stock = conn.execute(
+        """
+        SELECT COALESCE(SUM(CASE WHEN type = 'harvest' THEN quantity ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN type = 'shipment' THEN quantity ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN type = 'loss' THEN quantity ELSE 0 END), 0)
+        FROM stock_transactions st JOIN items i ON i.id = st.item_id
+        WHERE i.name = ?
+        """,
+        (item_name,),
+    ).fetchone()[0]
+    conn.close()
+    assert final_stock == 10.0  # 20 입고 - 5 출고 - 2 폐기 - 3 판매(출고)
 
 
 def test_all_channels_settlement_summary_golden_path():
