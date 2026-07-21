@@ -84,7 +84,7 @@
 
 - [x] E2E 테스트 작성 (완료 기준 시나리오: 품목등록 → 입고 → 출고 → 폐기 → 판매 → 정산 리포트 → 대시보드, 1회 정상 동작 확인) — `test_v1_core_golden_path_register_stock_sale_report_dashboard`
 - [ ] 엑셀 Export / 커스텀 속성 추가·삭제 / 기간별 정산 리포트 각각 1회 정상 동작 확인
-- [ ] 농장 내 PC 로컬 배포 (또는 Streamlit Community Cloud 검토)
+- [x] 농장 PC 로컬 배포 준비 — 외부 URL(Streamlit Cloud 등) 대신 로컬 실행 방식으로 결정 (SQLite 비영구 저장소 위험 + 농장 인터넷 불안정 문제 때문). `앱_실행.bat`/`앱_업데이트.bat` + `docs/deployment/farm-pc-guide.md` 작성 완료. 실제 농장 PC 설치는 사용자가 가이드대로 진행
 - [ ] KPI 측정 기준 설정 (수기 장부 대비 기록 시간 단축 체감 확인)
 
 ---
