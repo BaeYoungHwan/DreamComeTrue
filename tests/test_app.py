@@ -185,6 +185,41 @@ def test_v1_core_golden_path_register_stock_sale_report_dashboard():
     assert final_stock == 10.0  # 20 입고 - 5 출고 - 2 폐기 - 3 판매(출고)
 
 
+def test_custom_attribute_add_and_delete_golden_path():
+    """품목 등록 -> 커스텀 속성 추가 -> 화면 반영 확인 -> 속성 삭제까지의 골든패스."""
+    from src.core.db import get_connection
+
+    at = AppTest.from_file("app.py")
+    at.run()
+    assert not at.exception
+
+    item_name = f"복숭아_{uuid.uuid4().hex[:8]}"
+    at.text_input(key="item_form_name").set_value(item_name)
+    at.text_input(key="item_form_unit").set_value("kg")
+    at.button(key="FormSubmitter:item_form-등록").click().run()
+    assert not at.exception
+
+    conn = get_connection(os.environ["FARM_DB_PATH"])
+    item_id = conn.execute(
+        "SELECT id FROM items WHERE name = ?", (item_name,)
+    ).fetchone()[0]
+    conn.close()
+
+    at.text_input(key=f"key_{item_id}").set_value("당도")
+    at.text_input(key=f"value_{item_id}").set_value("12 브릭스")
+    at.button(key=f"add_attr_{item_id}").click().run()
+    assert not at.exception
+    assert any(
+        "당도: 12 브릭스" in w.value for w in list(at.markdown) + list(at.text)
+    )
+
+    at.button(key=f"del_attr_{item_id}_당도").click().run()
+    assert not at.exception
+    assert not any(
+        "당도: 12 브릭스" in w.value for w in list(at.markdown) + list(at.text)
+    )
+
+
 def test_all_channels_settlement_summary_golden_path():
     """채널 등록 -> 판매 -> 전체 채널 정산 요약 조회 -> 엑셀 다운로드까지의 골든패스."""
     at = AppTest.from_file("app.py")

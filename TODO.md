@@ -83,9 +83,9 @@
 ## P2 — 검증 및 배포
 
 - [x] E2E 테스트 작성 (완료 기준 시나리오: 품목등록 → 입고 → 출고 → 폐기 → 판매 → 정산 리포트 → 대시보드, 1회 정상 동작 확인) — `test_v1_core_golden_path_register_stock_sale_report_dashboard`
-- [ ] 엑셀 Export / 커스텀 속성 추가·삭제 / 기간별 정산 리포트 각각 1회 정상 동작 확인
+- [x] 엑셀 Export / 커스텀 속성 추가·삭제 / 기간별 정산 리포트 각각 1회 정상 동작 확인 — chrome-devtools 연결 해제로 실브라우저 대신 AppTest 골든패스로 검증. 기간별 정산 리포트·엑셀 다운로드(정산 리포트/전체 채널 정산)는 기존 골든패스가 `st.session_state` 경로를 통해 이미 실제로 실행·검증 중이었음을 확인. 커스텀 속성 추가·삭제만 UI 레벨 테스트가 없어 `test_custom_attribute_add_and_delete_golden_path` 신규 추가 (`tests/test_app.py`). pytest 94개 전체 통과
 - [x] 농장 PC 로컬 배포 준비 — 외부 URL(Streamlit Cloud 등) 대신 로컬 실행 방식으로 결정 (SQLite 비영구 저장소 위험 + 농장 인터넷 불안정 문제 때문). `앱_실행.bat`/`앱_업데이트.bat` + `docs/deployment/farm-pc-guide.md` 작성 완료. 실제 농장 PC 설치는 사용자가 가이드대로 진행
-- [ ] KPI 측정 기준 설정 (수기 장부 대비 기록 시간 단축 체감 확인)
+- [x] KPI 측정 기준 설정 — 스톱워치 등 시간 측정 기능은 과설계로 판단해 앱에 추가하지 않고, 농장 PC 배포 후 2주 실사용 시점에 농장주에게 "확실히 빨라졌다/비슷하다/더 불편하다" 3단계 구두 체감 확인으로 대체. 상세 기준은 `docs/product-specs/PRD-v1.md` 4-2절 참조
 
 ---
 
