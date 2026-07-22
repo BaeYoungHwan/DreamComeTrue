@@ -551,21 +551,32 @@ with tab_report:
 
             if "detail_rows" in st.session_state:
                 detail_rows = st.session_state["detail_rows"]
-                st.table(
-                    [
-                        {
-                            "날짜": r["sold_at"],
-                            "품목": r["item_name"],
-                            "크기": r["size"] or "-",
-                            "무게": r["weight"] or "-",
-                            "출하처": r["buyer"],
-                            "수량": r["quantity"],
-                            "단가": f"{r['unit_price']:,.0f}",
-                            "금액": f"{r['total_amount']:,.0f}",
-                        }
-                        for r in detail_rows
-                    ]
+                detail_table_rows = [
+                    {
+                        "날짜": r["sold_at"],
+                        "품목": r["item_name"],
+                        "크기": r["size"] or "-",
+                        "무게": r["weight"] or "-",
+                        "출하처": r["buyer"],
+                        "수량": r["quantity"],
+                        "단가": f"{r['unit_price']:,.0f}",
+                        "금액": f"{r['total_amount']:,.0f}",
+                    }
+                    for r in detail_rows
+                ]
+                detail_table_rows.append(
+                    {
+                        "날짜": "합계",
+                        "품목": "",
+                        "크기": "",
+                        "무게": "",
+                        "출하처": "",
+                        "수량": f"{sum(r['quantity'] for r in detail_rows):,.1f}",
+                        "단가": "",
+                        "금액": f"{sum(r['total_amount'] for r in detail_rows):,.0f}",
+                    }
                 )
+                st.table(detail_table_rows)
                 st.download_button(
                     "상세 리포트 엑셀 다운로드",
                     data=detailed_report_to_excel_bytes(detail_rows),

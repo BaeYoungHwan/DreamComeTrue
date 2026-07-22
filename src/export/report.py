@@ -94,6 +94,14 @@ def detailed_report_to_excel_bytes(rows: list[dict[str, Any]]) -> bytes:
                 _as_int(row["total_amount"]),
             ]
         )
+    ws.append(
+        [
+            "합계", None, None, None, None,
+            sum(row["quantity"] for row in rows),
+            None,
+            sum(_as_int(row["total_amount"]) for row in rows),
+        ]
+    )
 
     buf = io.BytesIO()
     wb.save(buf)
