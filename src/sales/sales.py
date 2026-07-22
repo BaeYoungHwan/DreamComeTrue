@@ -50,8 +50,8 @@ def record_sale(
 ) -> int:
     if quantity <= 0:
         raise ValueError("수량은 0보다 커야 합니다")
-    if unit_price < 0:
-        raise ValueError("단가는 0 이상이어야 합니다")
+    if unit_price <= 0:
+        raise ValueError("단가는 0보다 커야 합니다")
 
     tx_id = record_transaction(
         conn, item_id, "shipment", quantity, occurred_on=sold_on, variant_id=variant_id

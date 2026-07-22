@@ -39,6 +39,14 @@ def test_record_sale_computes_total_amount(tmp_path):
     assert row == ("로컬푸드 매장", 3, 2000, 6000)
 
 
+def test_record_sale_rejects_zero_unit_price(tmp_path):
+    conn, item_id = _conn_with_stock(tmp_path, 10)
+
+    with pytest.raises(ValueError):
+        record_sale(conn, item_id, "로컬푸드 매장", 3, 0)
+    conn.close()
+
+
 def test_record_sale_rejects_when_stock_insufficient(tmp_path):
     conn, item_id = _conn_with_stock(tmp_path, 2)
 
