@@ -4,6 +4,10 @@
 # PowerShell은 CRLF
 *.ps1 text eol=crlf
 
+# .bat은 CP949(한글 Windows 콘솔 기본 인코딩) + CRLF로 고정 저장 —
+# git의 텍스트/줄바꿈 자동 변환이 건드리면 한글이 깨지므로 바이너리 취급
+*.bat -text
+
 # 그 외 텍스트 파일
 *.md text
 *.json text
