@@ -111,7 +111,7 @@ with tab_overview:
                     "품목": r["item_name"],
                     "크기": r["size"] or "-",
                     "무게": r["weight"] or "-",
-                    "재고": f"{r['stock']:,.1f} {r['unit']}",
+                    "재고": f"{r['stock']:,.0f} EA",
                 }
                 for r in overview_rows
             ]
@@ -152,7 +152,7 @@ with tab_items:
                 v_stock = current_stock(conn, item["id"], variant_id=v["id"])
                 v_col1.write(
                     f"{v['size'] or '-'} / {v['weight'] or '-'} · 기준단가 {price_label} "
-                    f"· 재고 {v_stock:,.1f} {item['unit']}"
+                    f"· 재고 {v_stock:,.0f} EA"
                 )
                 if v_col2.button("삭제", key=f"del_variant_{v['id']}"):
                     try:
@@ -259,7 +259,7 @@ with tab_stock:
 
         st.subheader("현재 재고")
         for item in items:
-            st.write(f"{item['name']}: {current_stock(conn, item['id']):,.1f} {item['unit']}")
+            st.write(f"{item['name']}: {current_stock(conn, item['id']):,.0f} EA")
 
 with tab_sales:
     st.subheader("판매 기록")

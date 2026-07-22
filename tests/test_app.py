@@ -152,7 +152,7 @@ def test_v1_core_golden_path_register_stock_sale_report_dashboard():
     _record_stock("loss", 2.0)  # 폐기
 
     stock_line = "".join(w.value for w in list(at.markdown) + list(at.text))
-    assert f"{item_name}: 13.0 kg" in stock_line
+    assert f"{item_name}: 13 EA" in stock_line
 
     at.selectbox(key="sales_item").set_value(f"{item_name} (kg)").run()
     at.text_input(key="sales_buyer_manual").set_value("로컬푸드 매장")
