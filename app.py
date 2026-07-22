@@ -51,12 +51,20 @@ from src.orders.orders import (
     list_orders,
     ship_order,
 )
+from src.sales.consignment import (
+    ShipmentAlreadyConfirmedError,
+    ShipmentNotFoundError,
+    confirm_sale,
+    create_shipment,
+    list_shipments,
+)
 from src.sales.sales import delete_sale, list_sales, record_sale
 from src.settlement.channels import (
     ChannelInUseError,
     ChannelNameConflictError,
     create_channel,
     delete_channel,
+    get_channel,
     list_channels,
     update_channel,
 )
@@ -184,13 +192,22 @@ with tab_items:
                     )
                     st.rerun()
 
+            def _variant_label(variant_id: int | None) -> str:
+                if variant_id is None:
+                    return ""
+                v = get_variant(conn, variant_id)
+                if not v:
+                    return ""
+                return f" · {v['size'] or '-'} / {v['weight'] or '-'}"
+
             transactions = list_transactions(conn, item["id"])
             if transactions:
                 st.write("**입출고 내역**")
                 for tx in transactions:
                     tx_col1, tx_col2, tx_col3 = st.columns([3, 1, 1])
                     tx_col1.write(
-                        f"{TX_TYPE_LABELS[tx['type']]} · {tx['quantity']} {item['unit']} · {tx['created_at']}"
+                        f"{TX_TYPE_LABELS[tx['type']]} · {tx['quantity']} {item['unit']}"
+                        f"{_variant_label(tx['variant_id'])} · {tx['created_at']}"
                     )
                     tx_confirm = tx_col2.checkbox("확인", key=f"confirm_del_tx_{tx['id']}")
                     if tx_col3.button("삭제", key=f"del_tx_{tx['id']}", disabled=not tx_confirm):
@@ -203,7 +220,8 @@ with tab_items:
                 for s in sales_history:
                     s_col1, s_col2, s_col3 = st.columns([3, 1, 1])
                     s_col1.write(
-                        f"{s['sold_at']} · {s['buyer']} · {s['quantity']} {item['unit']} · "
+                        f"{s['sold_at']} · {s['buyer']} · {s['quantity']} {item['unit']}"
+                        f"{_variant_label(s['variant_id'])} · "
                         f"{s['unit_price']:,.0f}원 · 합계 {s['total_amount']:,.0f}원"
                     )
                     s_confirm = s_col2.checkbox("확인", key=f"confirm_del_sale_{s['id']}")
@@ -299,39 +317,136 @@ with tab_sales:
             on_change=_apply_variant_price,
         )
 
-        with st.form("sales_form", clear_on_submit=True):
-            selected_channel = st.selectbox("채널 (로컬푸드 매장 등)", channel_options, key="sales_channel")
-            buyer_manual = st.text_input(
-                "직접 입력 출하처 (채널을 선택하지 않은 경우에만 사용)", key="sales_buyer_manual"
+        selected_channel = st.selectbox("채널 (로컬푸드 매장 등)", channel_options, key="sales_channel")
+        selected_channel_type = None
+        if selected_channel != NO_CHANNEL:
+            selected_channel_type = next(
+                c["channel_type"] for c in channels if c["name"] == selected_channel
             )
-            quantity = st.number_input("판매 수량", min_value=0.0, step=0.1, key="sales_qty")
-            unit_price = st.number_input("단가", min_value=0, step=100, format="%d", key="sales_price")
-            sale_date = st.date_input("판매 일자", value=date.today(), key="sales_date")
-            if st.form_submit_button("판매 등록"):
-                if selected_channel == NO_CHANNEL:
-                    buyer, channel_id = buyer_manual, None
-                else:
-                    buyer, channel_id = selected_channel, channel_labels[selected_channel]
-                try:
-                    record_sale(
-                        conn,
-                        selected_item_id,
-                        buyer,
-                        quantity,
-                        unit_price,
-                        sold_on=sale_date.isoformat(),
-                        channel_id=channel_id,
-                        variant_id=variant_sale_labels[selected_variant_label],
-                    )
-                    st.success("판매가 등록되었습니다.")
-                    st.rerun()
-                except (ValueError, InsufficientStockError) as e:
-                    st.error(str(e))
-        if not channels:
+
+        if selected_channel_type == "consignment":
             st.caption(
-                "'채널 관리' 탭에서 로컬푸드 매장 등을 등록하면 정산 리포트에서 "
-                "수수료 자동계산을 이용할 수 있습니다."
+                "위탁판매 채널입니다 — 출고해도 바로 매출로 잡히지 않습니다. "
+                "출고 후 아래 '위탁 판매대기 목록'에서 실제 판매 수량을 확정해야 매출에 반영됩니다."
             )
+            with st.form("shipment_form", clear_on_submit=True):
+                ship_quantity = st.number_input("출고 수량", min_value=0.0, step=0.1, key="ship_qty")
+                ship_date = st.date_input("출고 일자", value=date.today(), key="ship_date")
+                if st.form_submit_button("출고"):
+                    try:
+                        create_shipment(
+                            conn,
+                            selected_item_id,
+                            channel_labels[selected_channel],
+                            ship_quantity,
+                            variant_id=variant_sale_labels[selected_variant_label],
+                            shipped_on=ship_date.isoformat(),
+                        )
+                        st.success("출고가 기록되었습니다. 아래 '위탁 판매대기 목록'에서 판매 수량을 확정해주세요.")
+                        st.rerun()
+                    except (ValueError, InsufficientStockError) as e:
+                        st.error(str(e))
+        else:
+            with st.form("sales_form", clear_on_submit=True):
+                buyer_manual = st.text_input(
+                    "직접 입력 출하처 (채널을 선택하지 않은 경우에만 사용)", key="sales_buyer_manual"
+                )
+                quantity = st.number_input("판매 수량", min_value=0.0, step=0.1, key="sales_qty")
+                unit_price = st.number_input("단가", min_value=0, step=100, format="%d", key="sales_price")
+                sale_date = st.date_input("판매 일자", value=date.today(), key="sales_date")
+                if st.form_submit_button("판매 등록"):
+                    if selected_channel == NO_CHANNEL:
+                        buyer, channel_id = buyer_manual, None
+                    else:
+                        buyer, channel_id = selected_channel, channel_labels[selected_channel]
+                    try:
+                        record_sale(
+                            conn,
+                            selected_item_id,
+                            buyer,
+                            quantity,
+                            unit_price,
+                            sold_on=sale_date.isoformat(),
+                            channel_id=channel_id,
+                            variant_id=variant_sale_labels[selected_variant_label],
+                        )
+                        st.success("판매가 등록되었습니다.")
+                        st.rerun()
+                    except (ValueError, InsufficientStockError) as e:
+                        st.error(str(e))
+            if not channels:
+                st.caption(
+                    "'채널 관리' 탭에서 로컬푸드 매장 등을 등록하면 정산 리포트에서 "
+                    "수수료 자동계산을 이용할 수 있습니다."
+                )
+
+        def _shipment_display_label(shipment: dict) -> str:
+            item = get_item(conn, shipment["item_id"])
+            item_name = item["name"] if item else "알 수 없음"
+            if shipment["variant_id"]:
+                variant = get_variant(conn, shipment["variant_id"])
+                variant_label = (
+                    f"{variant['size'] or '-'} / {variant['weight'] or '-'}" if variant else "-"
+                )
+            else:
+                variant_label = "변형 없음"
+            channel = get_channel(conn, shipment["channel_id"])
+            channel_name = channel["name"] if channel else "알 수 없음"
+            return (
+                f"{item_name} ({variant_label}) · {channel_name} · "
+                f"출고 {shipment['shipped_quantity']:,.1f}개 · 출고일: {shipment['shipped_at']}"
+            )
+
+        st.divider()
+        st.subheader("위탁 판매대기 목록")
+        waiting_shipments = list_shipments(conn, status="판매대기")
+        if not waiting_shipments:
+            st.info("판매 대기 중인 위탁 출고 건이 없습니다.")
+        else:
+            for s in waiting_shipments:
+                st.write(_shipment_display_label(s))
+                default_price = 0
+                if s["variant_id"]:
+                    v = get_variant(conn, s["variant_id"])
+                    if v and v["default_price"] is not None:
+                        default_price = int(v["default_price"])
+                sc1, sc2, sc3 = st.columns(3)
+                sold_qty = sc1.number_input(
+                    "판매 수량",
+                    min_value=0.0,
+                    max_value=float(s["shipped_quantity"]),
+                    value=float(s["shipped_quantity"]),
+                    step=0.1,
+                    key=f"confirm_qty_{s['id']}",
+                )
+                sold_price = sc2.number_input(
+                    "단가",
+                    min_value=0,
+                    step=100,
+                    format="%d",
+                    value=default_price,
+                    key=f"confirm_price_{s['id']}",
+                )
+                if sc3.button("판매완료", key=f"confirm_btn_{s['id']}"):
+                    try:
+                        confirm_sale(conn, s["id"], sold_qty, sold_price)
+                        st.rerun()
+                    except (
+                        ValueError,
+                        ShipmentNotFoundError,
+                        ShipmentAlreadyConfirmedError,
+                    ) as e:
+                        st.error(str(e))
+                st.divider()
+
+        confirmed_shipments = list_shipments(conn, status="판매완료")
+        if confirmed_shipments:
+            st.subheader("위탁 판매 확정 내역")
+            for s in confirmed_shipments[:20]:
+                st.caption(
+                    f"{_shipment_display_label(s)} → 판매확정 {s['sold_quantity']:,.1f}개 "
+                    f"(확정일: {s['confirmed_at']})"
+                )
 
 with tab_orders:
     st.caption(

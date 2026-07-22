@@ -170,6 +170,84 @@ def test_item_delete_button_disabled_until_checkbox_confirmed():
     assert remaining == 0
 
 
+def test_consignment_shipment_and_sale_confirmation_golden_path():
+    """위탁판매 채널 등록 -> 품목 등록/입고 -> 출고(판매대기) -> 판매 수량 확정까지의 골든패스."""
+    at = AppTest.from_file("app.py")
+    at.run()
+    assert not at.exception
+
+    channel_name = f"위탁매장_{uuid.uuid4().hex[:8]}"
+    at.text_input(key="channel_form_name").set_value(channel_name)
+    at.selectbox(key="channel_form_type").set_value("consignment")
+    at.number_input(key="channel_form_rate").set_value(10.0)
+    at.button(key="FormSubmitter:channel_form-등록").click().run()
+    assert not at.exception
+
+    item_name = f"블루베리_{uuid.uuid4().hex[:8]}"
+    at.text_input(key="item_form_name").set_value(item_name)
+    at.text_input(key="item_form_unit").set_value("kg")
+    at.button(key="FormSubmitter:item_form-등록").click().run()
+    assert not at.exception
+
+    at.selectbox(key="stock_item_select").set_value(f"{item_name} (kg)").run()
+    at.selectbox(key="stock_tx_type").set_value("harvest")
+    at.number_input(key="stock_quantity").set_value(20.0)
+    at.button(key="FormSubmitter:stock_form-기록").click().run()
+    assert not at.exception
+
+    at.selectbox(key="sales_item").set_value(f"{item_name} (kg)").run()
+    at.selectbox(key="sales_channel").set_value(channel_name).run()
+    assert any("위탁판매 채널입니다" in c.value for c in at.caption)
+
+    at.number_input(key="ship_qty").set_value(8.0)
+    at.button(key="FormSubmitter:shipment_form-출고").click().run()
+    assert not at.exception
+    assert any("출고가 기록되었습니다" in s.value for s in at.success)
+
+    from src.core.db import get_connection
+
+    conn = get_connection(os.environ["FARM_DB_PATH"])
+    stock_after_ship = conn.execute(
+        """
+        SELECT COALESCE(SUM(CASE WHEN type = 'harvest' THEN quantity ELSE -quantity END), 0)
+        FROM stock_transactions st JOIN items i ON i.id = st.item_id WHERE i.name = ?
+        """,
+        (item_name,),
+    ).fetchone()[0]
+    sales_count_before = conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0]
+    shipment_id = conn.execute(
+        "SELECT cs.id FROM consignment_shipments cs JOIN items i ON i.id = cs.item_id WHERE i.name = ?",
+        (item_name,),
+    ).fetchone()[0]
+    conn.close()
+
+    assert stock_after_ship == 12  # 20 입고 - 8 출고, 출고 시점에 바로 차감
+    assert sales_count_before == 0  # 아직 매출로는 안 잡힘
+
+    assert any("위탁 판매대기 목록" in s.value for s in at.subheader)
+
+    at.number_input(key=f"confirm_qty_{shipment_id}").set_value(6.0)
+    at.number_input(key=f"confirm_price_{shipment_id}").set_value(4000)
+    at.button(key=f"confirm_btn_{shipment_id}").click().run()
+    assert not at.exception
+
+    conn = get_connection(os.environ["FARM_DB_PATH"])
+    sale = conn.execute(
+        "SELECT buyer, quantity, unit_price, total_amount FROM sales"
+    ).fetchone()
+    stock_after_confirm = conn.execute(
+        """
+        SELECT COALESCE(SUM(CASE WHEN type = 'harvest' THEN quantity ELSE -quantity END), 0)
+        FROM stock_transactions st JOIN items i ON i.id = st.item_id WHERE i.name = ?
+        """,
+        (item_name,),
+    ).fetchone()[0]
+    conn.close()
+
+    assert sale == (channel_name, 6, 4000, 24000)
+    assert stock_after_confirm == 12  # 확정 시 재고가 추가로 또 빠지면 안 됨
+
+
 def test_v1_core_golden_path_register_stock_sale_report_dashboard():
     """PRD-v1 완료 기준: 품목등록 → 입고 → 출고 → 폐기 → 판매 → 정산 리포트 → 대시보드 확인,
     1회 정상 동작."""

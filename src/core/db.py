@@ -77,6 +77,20 @@ CREATE TABLE IF NOT EXISTS settlements (
     memo TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS consignment_shipments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    variant_id INTEGER REFERENCES item_variants(id),
+    channel_id INTEGER NOT NULL REFERENCES channels(id),
+    stock_transaction_id INTEGER NOT NULL REFERENCES stock_transactions(id),
+    shipped_quantity REAL NOT NULL CHECK (shipped_quantity > 0),
+    status TEXT NOT NULL DEFAULT '판매대기' CHECK (status IN ('판매대기', '판매완료')),
+    sold_quantity REAL,
+    sale_id INTEGER REFERENCES sales(id),
+    shipped_at TEXT NOT NULL DEFAULT (datetime('now')),
+    confirmed_at TEXT
+);
 """
 
 

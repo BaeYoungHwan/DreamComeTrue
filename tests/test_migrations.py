@@ -71,7 +71,7 @@ def test_run_migrations_sets_version_to_latest(tmp_path):
     version = current_schema_version(conn)
     conn.close()
 
-    assert version == 4
+    assert version == 5
 
 
 def test_run_migrations_is_idempotent(tmp_path):
@@ -83,7 +83,7 @@ def test_run_migrations_is_idempotent(tmp_path):
     version = current_schema_version(conn)
     conn.close()
 
-    assert version == 4
+    assert version == 5
 
 
 def test_run_migrations_creates_item_variants_and_orders_tables(tmp_path):
@@ -192,3 +192,20 @@ def test_run_migrations_adds_shipping_fee_to_orders_table(tmp_path):
     conn.close()
 
     assert "shipping_fee" in columns
+
+
+def test_run_migrations_creates_consignment_shipments_table(tmp_path):
+    conn = get_connection(str(tmp_path / "farm.db"))
+    init_db(conn)
+
+    run_migrations(conn)
+    run_migrations(conn)  # 재실행해도 오류 없이 no-op
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    conn.close()
+
+    assert "consignment_shipments" in tables

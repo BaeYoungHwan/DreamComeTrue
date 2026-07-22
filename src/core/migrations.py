@@ -122,11 +122,32 @@ def _migration_004_orders_shipping_fee(conn: sqlite3.Connection) -> None:
         )
 
 
+def _migration_005_consignment_shipments(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS consignment_shipments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL REFERENCES items(id),
+            variant_id INTEGER REFERENCES item_variants(id),
+            channel_id INTEGER NOT NULL REFERENCES channels(id),
+            stock_transaction_id INTEGER NOT NULL REFERENCES stock_transactions(id),
+            shipped_quantity REAL NOT NULL CHECK (shipped_quantity > 0),
+            status TEXT NOT NULL DEFAULT '판매대기' CHECK (status IN ('판매대기', '판매완료')),
+            sold_quantity REAL,
+            sale_id INTEGER REFERENCES sales(id),
+            shipped_at TEXT NOT NULL DEFAULT (datetime('now')),
+            confirmed_at TEXT
+        );
+        """
+    )
+
+
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _migration_001_channels),
     (2, _migration_002_item_variants),
     (3, _migration_003_orders),
     (4, _migration_004_orders_shipping_fee),
+    (5, _migration_005_consignment_shipments),
 ]
 
 
