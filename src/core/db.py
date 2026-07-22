@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS orders (
     deposit_confirmed_at TEXT,
     status TEXT NOT NULL DEFAULT '출고대기' CHECK (status IN ('출고대기', '출고완료')),
     shipped_stock_transaction_id INTEGER REFERENCES stock_transactions(id),
+    shipping_fee REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

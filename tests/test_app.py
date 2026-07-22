@@ -123,8 +123,51 @@ def test_variant_price_and_order_golden_path():
         "(SELECT id FROM item_variants WHERE item_id = ?)",
         (item_id,),
     ).fetchone()[0]
+    sale = conn.execute(
+        "SELECT buyer, channel_id, quantity, unit_price, total_amount FROM sales WHERE item_id = ?",
+        (item_id,),
+    ).fetchone()
     conn.close()
     assert status == "출고완료"
+    assert sale == ("홍길동", None, 3, 15000, 45000)
+
+
+def test_item_delete_button_disabled_until_checkbox_confirmed():
+    """삭제 확인 체크박스를 체크하기 전에는 삭제 버튼이 비활성화되어야 한다."""
+    at = AppTest.from_file("app.py")
+    at.run()
+    assert not at.exception
+
+    item_name = f"상추_{uuid.uuid4().hex[:8]}"
+    at.text_input(key="item_form_name").set_value(item_name)
+    at.text_input(key="item_form_unit").set_value("kg")
+    at.button(key="FormSubmitter:item_form-등록").click().run()
+    assert not at.exception
+
+    from src.core.db import get_connection
+
+    conn = get_connection(os.environ["FARM_DB_PATH"])
+    item_id = conn.execute(
+        "SELECT id FROM items WHERE name = ?", (item_name,)
+    ).fetchone()[0]
+    conn.close()
+
+    delete_button = at.button(key=f"del_item_{item_id}")
+    assert delete_button.disabled
+
+    at.checkbox(key=f"confirm_del_item_{item_id}").set_value(True).run()
+    delete_button = at.button(key=f"del_item_{item_id}")
+    assert not delete_button.disabled
+
+    delete_button.click().run()
+    assert not at.exception
+
+    conn = get_connection(os.environ["FARM_DB_PATH"])
+    remaining = conn.execute(
+        "SELECT COUNT(*) FROM items WHERE id = ?", (item_id,)
+    ).fetchone()[0]
+    conn.close()
+    assert remaining == 0
 
 
 def test_v1_core_golden_path_register_stock_sale_report_dashboard():

@@ -4,6 +4,40 @@ import sqlite3
 from src.inventory.stock import record_transaction
 
 
+def _insert_sale_row(
+    conn: sqlite3.Connection,
+    item_id: int,
+    stock_transaction_id: int,
+    channel_id: int | None,
+    variant_id: int | None,
+    buyer: str,
+    quantity: float,
+    unit_price: float,
+    sold_on: str | None = None,
+) -> int:
+    """이미 재고 차감(stock_transaction)이 끝난 판매 건을 sales 테이블에 기록한다."""
+    total_amount = round(quantity * unit_price)
+
+    if sold_on:
+        cur = conn.execute(
+            """
+            INSERT INTO sales (item_id, stock_transaction_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount, sold_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (item_id, stock_transaction_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount, sold_on),
+        )
+    else:
+        cur = conn.execute(
+            """
+            INSERT INTO sales (item_id, stock_transaction_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (item_id, stock_transaction_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount),
+        )
+    conn.commit()
+    return cur.lastrowid
+
+
 def record_sale(
     conn: sqlite3.Connection,
     item_id: int,
@@ -22,26 +56,9 @@ def record_sale(
     tx_id = record_transaction(
         conn, item_id, "shipment", quantity, occurred_on=sold_on, variant_id=variant_id
     )
-    total_amount = round(quantity * unit_price)
-
-    if sold_on:
-        cur = conn.execute(
-            """
-            INSERT INTO sales (item_id, stock_transaction_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount, sold_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (item_id, tx_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount, sold_on),
-        )
-    else:
-        cur = conn.execute(
-            """
-            INSERT INTO sales (item_id, stock_transaction_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (item_id, tx_id, channel_id, variant_id, buyer, quantity, unit_price, total_amount),
-        )
-    conn.commit()
-    return cur.lastrowid
+    return _insert_sale_row(
+        conn, item_id, tx_id, channel_id, variant_id, buyer, quantity, unit_price, sold_on
+    )
 
 
 def list_sales(conn: sqlite3.Connection, item_id: int) -> list[dict]:

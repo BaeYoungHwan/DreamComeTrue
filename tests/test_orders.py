@@ -89,3 +89,61 @@ def test_create_order_rejects_non_positive_quantity(tmp_path):
     with pytest.raises(ValueError):
         create_order(conn, variant_id, "홍길동", 0)
     conn.close()
+
+
+def test_create_order_stores_shipping_fee(tmp_path):
+    conn, item_id, variant_id = _conn_with_variant(tmp_path)
+    order_id = create_order(conn, variant_id, "홍길동", 3, shipping_fee=4000)
+
+    order = get_order(conn, order_id)
+    conn.close()
+
+    assert order["shipping_fee"] == 4000
+
+
+def test_ship_order_creates_sales_row_with_variant_default_price(tmp_path):
+    conn, item_id, variant_id = _conn_with_variant(tmp_path, harvested=10)
+    order_id = create_order(conn, variant_id, "홍길동", 3)
+
+    ship_order(conn, order_id, occurred_on="2026-07-20")
+
+    row = conn.execute(
+        "SELECT buyer, channel_id, variant_id, quantity, unit_price, total_amount, sold_at "
+        "FROM sales WHERE item_id = ?",
+        (item_id,),
+    ).fetchone()
+    conn.close()
+
+    assert row == ("홍길동", None, variant_id, 3, 15000, 45000, "2026-07-20")
+
+
+def test_ship_order_does_not_double_deduct_stock(tmp_path):
+    """ship_order가 record_transaction과 sales 기록을 모두 수행해도 재고는 1회만 차감돼야 한다."""
+    conn, item_id, variant_id = _conn_with_variant(tmp_path, harvested=10)
+    order_id = create_order(conn, variant_id, "홍길동", 3)
+
+    ship_order(conn, order_id)
+
+    tx_count = conn.execute(
+        "SELECT COUNT(*) FROM stock_transactions WHERE item_id = ? AND type = 'shipment'",
+        (item_id,),
+    ).fetchone()[0]
+    stock = current_stock(conn, item_id, variant_id=variant_id)
+    conn.close()
+
+    assert tx_count == 1
+    assert stock == 7
+
+
+def test_ship_order_shipping_fee_not_included_in_sale_total_amount(tmp_path):
+    conn, item_id, variant_id = _conn_with_variant(tmp_path, harvested=10)
+    order_id = create_order(conn, variant_id, "홍길동", 3, shipping_fee=5000)
+
+    ship_order(conn, order_id)
+
+    total_amount = conn.execute(
+        "SELECT total_amount FROM sales WHERE item_id = ?", (item_id,)
+    ).fetchone()[0]
+    conn.close()
+
+    assert total_amount == 45000  # 3 * 15000, 택배비 5000은 미포함

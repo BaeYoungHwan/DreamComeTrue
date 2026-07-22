@@ -1,8 +1,9 @@
-"""선입금 주문출하 관리 — 입금 확인 후 출고 대기, 출고 시 재고 차감."""
+"""선입금 주문출하 관리 — 입금 확인 후 출고 대기, 출고 시 재고 차감 및 매출 반영."""
 import sqlite3
 
 from src.inventory.stock import record_transaction
 from src.inventory.variants import get_variant
+from src.sales.sales import _insert_sale_row
 
 
 class OrderNotFoundError(Exception):
@@ -19,14 +20,15 @@ def create_order(
     customer_name: str,
     quantity: float,
     deposit_confirmed_at: str | None = None,
+    shipping_fee: float = 0,
 ) -> int:
     if quantity <= 0:
         raise ValueError("수량은 0보다 커야 합니다")
 
     cur = conn.execute(
-        "INSERT INTO orders (variant_id, customer_name, quantity, deposit_confirmed_at) "
-        "VALUES (?, ?, ?, ?)",
-        (variant_id, customer_name, quantity, deposit_confirmed_at),
+        "INSERT INTO orders (variant_id, customer_name, quantity, deposit_confirmed_at, shipping_fee) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (variant_id, customer_name, quantity, deposit_confirmed_at, shipping_fee),
     )
     conn.commit()
     return cur.lastrowid
@@ -41,13 +43,14 @@ def _row_to_order(row: tuple) -> dict:
         "deposit_confirmed_at": row[4],
         "status": row[5],
         "shipped_stock_transaction_id": row[6],
-        "created_at": row[7],
+        "shipping_fee": row[7],
+        "created_at": row[8],
     }
 
 
 _SELECT_ORDER = (
     "SELECT id, variant_id, customer_name, quantity, deposit_confirmed_at, "
-    "status, shipped_stock_transaction_id, created_at FROM orders"
+    "status, shipped_stock_transaction_id, shipping_fee, created_at FROM orders"
 )
 
 
@@ -83,6 +86,17 @@ def ship_order(
         order["quantity"],
         occurred_on=occurred_on,
         variant_id=order["variant_id"],
+    )
+    _insert_sale_row(
+        conn,
+        variant["item_id"],
+        tx_id,
+        channel_id=None,
+        variant_id=order["variant_id"],
+        buyer=order["customer_name"],
+        quantity=order["quantity"],
+        unit_price=variant["default_price"] or 0,
+        sold_on=occurred_on,
     )
     conn.execute(
         "UPDATE orders SET status = '출고완료', shipped_stock_transaction_id = ? WHERE id = ?",

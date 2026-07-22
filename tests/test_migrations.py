@@ -71,7 +71,7 @@ def test_run_migrations_sets_version_to_latest(tmp_path):
     version = current_schema_version(conn)
     conn.close()
 
-    assert version == 3
+    assert version == 4
 
 
 def test_run_migrations_is_idempotent(tmp_path):
@@ -83,7 +83,7 @@ def test_run_migrations_is_idempotent(tmp_path):
     version = current_schema_version(conn)
     conn.close()
 
-    assert version == 3
+    assert version == 4
 
 
 def test_run_migrations_creates_item_variants_and_orders_tables(tmp_path):
@@ -180,3 +180,15 @@ def test_run_migrations_on_already_migrated_db_does_not_duplicate_channels(tmp_p
     conn.close()
 
     assert count == 1
+
+
+def test_run_migrations_adds_shipping_fee_to_orders_table(tmp_path):
+    conn = get_connection(str(tmp_path / "farm.db"))
+    init_db(conn)
+
+    run_migrations(conn)
+    run_migrations(conn)  # 재실행해도 오류 없이 no-op
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(orders)").fetchall()}
+    conn.close()
+
+    assert "shipping_fee" in columns

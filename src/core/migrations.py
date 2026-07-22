@@ -115,10 +115,18 @@ def _migration_003_orders(conn: sqlite3.Connection) -> None:
     )
 
 
+def _migration_004_orders_shipping_fee(conn: sqlite3.Connection) -> None:
+    if not _column_exists(conn, "orders", "shipping_fee"):
+        conn.execute(
+            "ALTER TABLE orders ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 0"
+        )
+
+
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, _migration_001_channels),
     (2, _migration_002_item_variants),
     (3, _migration_003_orders),
+    (4, _migration_004_orders_shipping_fee),
 ]
 
 

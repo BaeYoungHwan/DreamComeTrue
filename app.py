@@ -64,6 +64,7 @@ from src.settlement.settlement import (
     all_channels_settlement,
     channel_settlement,
     deposit_discrepancy,
+    list_settlements,
     save_settlement,
 )
 
@@ -145,7 +146,7 @@ with tab_items:
             )
             variants = list_variants(conn, item["id"])
             for v in variants:
-                v_col1, v_col2 = st.columns([4, 1])
+                v_col1, v_col2, v_col3 = st.columns([3, 1, 1])
                 price_label = (
                     f"{v['default_price']:,.0f}원" if v["default_price"] is not None else "미설정"
                 )
@@ -154,7 +155,8 @@ with tab_items:
                     f"{v['size'] or '-'} / {v['weight'] or '-'} · 기준단가 {price_label} "
                     f"· 재고 {v_stock:,.0f} EA"
                 )
-                if v_col2.button("삭제", key=f"del_variant_{v['id']}"):
+                v_confirm = v_col2.checkbox("확인", key=f"confirm_del_variant_{v['id']}")
+                if v_col3.button("삭제", key=f"del_variant_{v['id']}", disabled=not v_confirm):
                     try:
                         delete_variant(conn, v["id"])
                         st.rerun()
@@ -186,11 +188,12 @@ with tab_items:
             if transactions:
                 st.write("**입출고 내역**")
                 for tx in transactions:
-                    tx_col1, tx_col2 = st.columns([4, 1])
+                    tx_col1, tx_col2, tx_col3 = st.columns([3, 1, 1])
                     tx_col1.write(
                         f"{TX_TYPE_LABELS[tx['type']]} · {tx['quantity']} {item['unit']} · {tx['created_at']}"
                     )
-                    if tx_col2.button("삭제", key=f"del_tx_{tx['id']}"):
+                    tx_confirm = tx_col2.checkbox("확인", key=f"confirm_del_tx_{tx['id']}")
+                    if tx_col3.button("삭제", key=f"del_tx_{tx['id']}", disabled=not tx_confirm):
                         delete_transaction(conn, tx["id"])
                         st.rerun()
 
@@ -198,19 +201,21 @@ with tab_items:
             if sales_history:
                 st.write("**판매 내역**")
                 for s in sales_history:
-                    s_col1, s_col2 = st.columns([4, 1])
+                    s_col1, s_col2, s_col3 = st.columns([3, 1, 1])
                     s_col1.write(
                         f"{s['sold_at']} · {s['buyer']} · {s['quantity']} {item['unit']} · "
                         f"{s['unit_price']:,.0f}원 · 합계 {s['total_amount']:,.0f}원"
                     )
-                    if s_col2.button("삭제", key=f"del_sale_{s['id']}"):
+                    s_confirm = s_col2.checkbox("확인", key=f"confirm_del_sale_{s['id']}")
+                    if s_col3.button("삭제", key=f"del_sale_{s['id']}", disabled=not s_confirm):
                         delete_sale(conn, s["id"])
                         st.rerun()
 
             if not transactions and not sales_history:
                 st.caption("입출고·판매 기록이 없어 바로 삭제할 수 있습니다.")
 
-            if st.button("품목 삭제", key=f"del_item_{item['id']}"):
+            item_confirm = st.checkbox("삭제 확인", key=f"confirm_del_item_{item['id']}")
+            if st.button("품목 삭제", key=f"del_item_{item['id']}", disabled=not item_confirm):
                 try:
                     delete_item(conn, item["id"])
                     st.rerun()
@@ -359,6 +364,9 @@ with tab_orders:
                 )
                 customer_name = st.text_input("고객명", key="order_customer_name")
                 order_quantity = st.number_input("수량", min_value=0.0, step=0.1, key="order_qty")
+                order_shipping_fee = st.number_input(
+                    "택배비", min_value=0, step=500, format="%d", key="order_shipping_fee"
+                )
                 deposit_date = st.date_input(
                     "선입금 확인일", value=date.today(), key="order_deposit_date"
                 )
@@ -370,6 +378,7 @@ with tab_orders:
                             customer_name,
                             order_quantity,
                             deposit_confirmed_at=deposit_date.isoformat(),
+                            shipping_fee=order_shipping_fee,
                         )
                         st.success("주문이 접수되었습니다.")
                         st.rerun()
@@ -383,6 +392,7 @@ with tab_orders:
         variant_label = f"{variant['size'] or '-'} / {variant['weight'] or '-'}" if variant else "-"
         return (
             f"{order['customer_name']} · {item_name} ({variant_label}) · {order['quantity']}개 "
+            f"· 택배비 {order['shipping_fee']:,.0f}원 "
             f"· 선입금확인: {order['deposit_confirmed_at'] or '-'}"
         )
 
@@ -394,6 +404,9 @@ with tab_orders:
         for o in waiting_orders:
             o_col1, o_col2 = st.columns([4, 1])
             o_col1.write(_order_display_label(o))
+            order_variant = get_variant(conn, o["variant_id"])
+            if order_variant and not order_variant["default_price"]:
+                o_col1.caption("⚠️ 이 변형은 기준단가가 설정되지 않아 매출이 0원으로 기록됩니다.")
             if o_col2.button("출고 처리", key=f"ship_order_{o['id']}"):
                 try:
                     ship_order(conn, o["id"])
@@ -457,14 +470,15 @@ with tab_channels:
                     value=float(c["commission_rate"]),
                     key=f"ch_rate_{c['id']}",
                 )
-                btn_col1, btn_col2 = st.columns(2)
+                btn_col1, btn_col2, btn_col3 = st.columns(3)
                 if btn_col1.button("수정 저장", key=f"ch_update_{c['id']}"):
                     try:
                         update_channel(conn, c["id"], new_name, new_type, new_rate)
                         st.rerun()
                     except ChannelNameConflictError as e:
                         st.error(str(e))
-                if btn_col2.button("삭제", key=f"ch_delete_{c['id']}"):
+                ch_confirm = btn_col2.checkbox("확인", key=f"confirm_ch_delete_{c['id']}")
+                if btn_col3.button("삭제", key=f"ch_delete_{c['id']}", disabled=not ch_confirm):
                     try:
                         delete_channel(conn, c["id"])
                         st.rerun()
@@ -690,6 +704,27 @@ with tab_report:
                 file_name=f"채널정산_{result['channel_name']}_{result['period_start']}_{result['period_end']}.xlsx",
                 key="settlement_download",
             )
+
+        st.write("**정산 이력**")
+        settlement_history = list_settlements(
+            conn, settlement_channel_labels[selected_channel_name]
+        )
+        if settlement_history:
+            st.table(
+                [
+                    {
+                        "기간": f"{h['period_start']} ~ {h['period_end']}",
+                        "판매누계": f"{h['sales_total']:,.0f}",
+                        "수수료": f"{h['commission_amount']:,.0f}",
+                        "예상입금액": f"{h['expected_deposit']:,.0f}",
+                        "실제입금액": f"{h['actual_deposit']:,.0f}" if h["actual_deposit"] is not None else "-",
+                        "메모": h["memo"] or "-",
+                    }
+                    for h in settlement_history
+                ]
+            )
+        else:
+            st.caption("이 채널의 확정된 정산 이력이 없습니다.")
 
     st.divider()
     st.subheader("전체 데이터 백업 (엑셀)")
