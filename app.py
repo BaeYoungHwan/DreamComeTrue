@@ -152,7 +152,7 @@ with tab_items:
                 v_stock = current_stock(conn, item["id"], variant_id=v["id"])
                 v_col1.write(
                     f"{v['size'] or '-'} / {v['weight'] or '-'} · 기준단가 {price_label} "
-                    f"· 재고 {v_stock} {item['unit']}"
+                    f"· 재고 {v_stock:,.1f} {item['unit']}"
                 )
                 if v_col2.button("삭제", key=f"del_variant_{v['id']}"):
                     try:
@@ -259,7 +259,7 @@ with tab_stock:
 
         st.subheader("현재 재고")
         for item in items:
-            st.write(f"{item['name']}: {current_stock(conn, item['id'])} {item['unit']}")
+            st.write(f"{item['name']}: {current_stock(conn, item['id']):,.1f} {item['unit']}")
 
 with tab_sales:
     st.subheader("판매 기록")
@@ -504,7 +504,7 @@ with tab_dashboard:
                     "크기": r["size"] or "-",
                     "무게": r["weight"] or "-",
                     "판매수량": r["total_quantity"],
-                    "판매대금": r["total_amount"],
+                    "판매대금": f"{r['total_amount']:,.0f}",
                 }
                 for r in matrix
             ]
@@ -533,7 +533,7 @@ with tab_report:
                     {
                         "품목": r["item_name"],
                         "출하량": r["total_quantity"],
-                        "판매대금": r["total_amount"],
+                        "판매대금": f"{r['total_amount']:,.0f}",
                     }
                     for r in rows
                 ]
@@ -560,8 +560,8 @@ with tab_report:
                             "무게": r["weight"] or "-",
                             "출하처": r["buyer"],
                             "수량": r["quantity"],
-                            "단가": r["unit_price"],
-                            "금액": r["total_amount"],
+                            "단가": f"{r['unit_price']:,.0f}",
+                            "금액": f"{r['total_amount']:,.0f}",
                         }
                         for r in detail_rows
                     ]
@@ -599,10 +599,10 @@ with tab_report:
                 [
                     {
                         "채널": r["channel_name"],
-                        "판매누계": r["sales_total"],
+                        "판매누계": f"{r['sales_total']:,.0f}",
                         "수수료율(%)": r["commission_rate"],
-                        "수수료": r["commission_amount"],
-                        "예상입금액": r["expected_deposit"],
+                        "수수료": f"{r['commission_amount']:,.0f}",
+                        "예상입금액": f"{r['expected_deposit']:,.0f}",
                     }
                     for r in summary_results
                 ]

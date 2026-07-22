@@ -6,6 +6,11 @@ from typing import Any
 from openpyxl import Workbook
 
 
+def _as_int(value: Any) -> Any:
+    """금액 값을 정수로 변환한다(None은 그대로 반환)."""
+    return None if value is None else round(value)
+
+
 def period_report(
     conn: sqlite3.Connection, start_date: str, end_date: str
 ) -> list[dict[str, Any]]:
@@ -64,7 +69,7 @@ def report_to_excel_bytes(rows: list[dict[str, Any]]) -> bytes:
     ws.title = "정산리포트"
     ws.append(["품목", "출하량", "판매대금"])
     for row in rows:
-        ws.append([row["item_name"], row["total_quantity"], row["total_amount"]])
+        ws.append([row["item_name"], row["total_quantity"], _as_int(row["total_amount"])])
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -85,8 +90,8 @@ def detailed_report_to_excel_bytes(rows: list[dict[str, Any]]) -> bytes:
                 row["weight"],
                 row["buyer"],
                 row["quantity"],
-                row["unit_price"],
-                row["total_amount"],
+                _as_int(row["unit_price"]),
+                _as_int(row["total_amount"]),
             ]
         )
 
@@ -106,12 +111,12 @@ def settlement_to_excel_bytes(result: dict[str, Any]) -> bytes:
         [
             result.get("channel_name"),
             f"{result.get('period_start')} ~ {result.get('period_end')}",
-            result.get("sales_total"),
+            _as_int(result.get("sales_total")),
             result.get("commission_rate"),
-            result.get("commission_amount"),
-            result.get("expected_deposit"),
-            result.get("actual_deposit"),
-            result.get("diff"),
+            _as_int(result.get("commission_amount")),
+            _as_int(result.get("expected_deposit")),
+            _as_int(result.get("actual_deposit")),
+            _as_int(result.get("diff")),
         ]
     )
 
@@ -132,12 +137,12 @@ def all_channels_settlement_to_excel_bytes(results: list[dict[str, Any]]) -> byt
             [
                 result.get("channel_name"),
                 f"{result.get('period_start')} ~ {result.get('period_end')}",
-                result.get("sales_total"),
+                _as_int(result.get("sales_total")),
                 result.get("commission_rate"),
-                result.get("commission_amount"),
-                result.get("expected_deposit"),
-                result.get("actual_deposit"),
-                result.get("diff"),
+                _as_int(result.get("commission_amount")),
+                _as_int(result.get("expected_deposit")),
+                _as_int(result.get("actual_deposit")),
+                _as_int(result.get("diff")),
             ]
         )
 
@@ -171,7 +176,10 @@ def export_all_data_to_excel_bytes(conn: sqlite3.Connection) -> bytes:
     for row in conn.execute(
         "SELECT id, item_id, channel_id, buyer, quantity, unit_price, total_amount, sold_at FROM sales"
     ):
-        ws_sales.append(list(row))
+        r = list(row)
+        r[5] = _as_int(r[5])
+        r[6] = _as_int(r[6])
+        ws_sales.append(r)
 
     ws_channels = wb.create_sheet("채널")
     ws_channels.append(["id", "채널명", "유형", "수수료율", "등록일"])

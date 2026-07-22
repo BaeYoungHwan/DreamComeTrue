@@ -22,7 +22,7 @@ def record_sale(
     tx_id = record_transaction(
         conn, item_id, "shipment", quantity, occurred_on=sold_on, variant_id=variant_id
     )
-    total_amount = quantity * unit_price
+    total_amount = round(quantity * unit_price)
 
     if sold_on:
         cur = conn.execute(
