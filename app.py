@@ -572,7 +572,7 @@ with tab_report:
                         "크기": r["size"] or "-",
                         "무게": r["weight"] or "-",
                         "출하처": r["buyer"],
-                        "수량": r["quantity"],
+                        "수량": f"{r['quantity']:,.1f}",
                         "단가": f"{r['unit_price']:,.0f}",
                         "금액": f"{r['total_amount']:,.0f}",
                     }
